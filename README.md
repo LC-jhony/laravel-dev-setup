@@ -27,7 +27,7 @@ Instalador de entorno de desarrollo Laravel para Linux usando TUI (Textual).
 ## Instalación
 
 ```bash
-bash -c "$(curl -fsSL https://github.com/LC-jhony/laravel-dev-setup/main/install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/LC-jhony/laravel-dev-setup/main/install.sh)"
 ```
 
 O clonar el repositorio:

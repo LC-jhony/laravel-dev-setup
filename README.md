@@ -1,10 +1,10 @@
 # Laravel Dev Setup
 
-Instalador de entorno de desarrollo Laravel para Linux usando TUI (Textual).
+Instalador de entorno de desarrollo Laravel para Linux usando Rich.
 
 ## Características
 
-- Interfaz visual interactiva
+- Interfaz visual interactiva en terminal
 - Instalación de componentes esenciales:
   - ZSH + Powerlevel10k + Plugins
   - Git
@@ -20,16 +20,11 @@ Instalador de entorno de desarrollo Laravel para Linux usando TUI (Textual).
 ## Requisitos
 
 - Python 3.9+
-- Textual framework
 
 ## Instalación de dependencias
 
 ```bash
-# Install Textual
-pip install textual "textual[dev]"
-
-# Or with pipx (recommended for Ubuntu/Debian)
-pipx install textual
+pip install rich questionary
 ```
 
 ## Instalación del proyecto
@@ -60,7 +55,8 @@ python3 -m installer
 
 ## Tecnologías
 
-- [Textual](https://textual.textualize.io/) - Framework TUI
+- [Rich](https://rich.readthedocs.io/) - Rich terminal output
+- [Questionary](https://questionary.readthedocs.io/) - Interactive prompts
 - Python 3.9+
 
 ## Licencia

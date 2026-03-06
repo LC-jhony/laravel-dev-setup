@@ -23,26 +23,24 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "textual",
+    "rich",
+    "questionary",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "textual[dev]",
     "pytest",
-    "pytest-asyncio",
     "ruff",
     "mypy",
 ]
 
 [project.scripts]
-installer = "installer.app:main"
+installer = "installer.rich_app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.ruff]

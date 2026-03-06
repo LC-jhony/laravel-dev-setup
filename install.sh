@@ -5,11 +5,18 @@ echo "  Laravel Dev Setup Installer"
 echo "======================================"
 echo ""
 
-# Check if textual is installed
-if ! python3 -c "import textual" 2>/dev/null; then
-    echo "Error: Textual is not installed."
+# Check if rich and questionary are installed
+if ! python3 -c "import rich" 2>/dev/null; then
+    echo "Error: Rich is not installed."
     echo "Please install it first:"
-    echo "  pip install textual textual[dev]"
+    echo "  pip install rich questionary"
+    exit 1
+fi
+
+if ! python3 -c "import questionary" 2>/dev/null; then
+    echo "Error: Questionary is not installed."
+    echo "Please install it first:"
+    echo "  pip install rich questionary"
     exit 1
 fi
 

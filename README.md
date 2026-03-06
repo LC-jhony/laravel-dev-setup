@@ -23,7 +23,7 @@ Instalador de entorno de desarrollo Laravel para Linux usando TUI (Textual).
 - Python 3.9+
 ```bash
  pip install textual textual[dev]
-  pip install textual --break-system-packages
+ pip install textual --break-system-packages
 ```
 The system is using an externally-managed Python environment (Ubuntu/Debian). The safest approach is to use [pipx] or add [--break-system-packages.] Let me try [pipx] first:
 - Linux

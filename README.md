@@ -6,41 +6,50 @@ Instalador de entorno de desarrollo Laravel para Linux usando TUI (Textual).
 
 - Interfaz visual interactiva
 - Instalación de componentes esenciales:
-  - PHP (última versión estable)
-  - Composer
-  - Node.js, NPM, Yarn
-  - Docker
-  - MySQL / MariaDB
-  - Nginx
-  - Laravel Installer
-  - Laravel Valet
+  - ZSH + Powerlevel10k + Plugins
   - Git
-  - Redis
-- Soporte para múltiples distribuciones Linux (Ubuntu, Debian, Fedora, Arch)
+  - Unzip y herramientas básicas
+  - MariaDB (Database)
+  - PHP 8.4 + Extensiones
+  - Composer
+  - NVM + Node.js
+  - Laravel Valet
+  - Laravel Installer
+  - ~/Sites Directory
 
 ## Requisitos
 
 - Python 3.9+
-```bash
- pip install textual textual[dev]
- pip install textual --break-system-packages
-```
-The system is using an externally-managed Python environment (Ubuntu/Debian). The safest approach is to use [pipx] or add [--break-system-packages.] Let me try [pipx] first:
-- Linux
-- Acceso sudo
+- Textual framework
 
-## Instalación
+## Instalación de dependencias
+
+```bash
+# Install Textual
+pip install textual "textual[dev]"
+
+# Or with pipx (recommended for Ubuntu/Debian)
+pipx install textual
+```
+
+## Instalación del proyecto
+
+```bash
+# Clone the repository
+git clone https://github.com/LC-jhony/laravel-dev-setup.git
+cd laravel-dev-setup
+
+# Install the package
+pip install -e .
+
+# Run the installer
+python3 -m installer
+```
+
+O directamente:
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/LC-jhony/laravel-dev-setup/main/install.sh)"
-```
-
-O clonar el repositorio:
-
-```bash
-git clone https://github.com/LC-jhony/laravel-dev-setup.git
-cd laravel-dev-setup
-bash install.sh
 ```
 
 ## Uso

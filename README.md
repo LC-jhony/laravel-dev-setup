@@ -21,6 +21,7 @@ Instalador de entorno de desarrollo Laravel para Linux usando TUI (Textual).
 ## Requisitos
 
 - Python 3.9+
+- pip install textual textual[dev]
 - Linux
 - Acceso sudo
 
@@ -41,7 +42,7 @@ bash install.sh
 ## Uso
 
 ```bash
-python -m installer
+python3 -m installer
 ```
 
 ## Tecnologías

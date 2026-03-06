@@ -8,16 +8,19 @@ Screen {
 Header {
     background: $primary;
     color: $text;
+    dock: top;
 }
 
 Footer {
     background: $primary;
     color: $text;
+    dock: bottom;
 }
 
 /* Buttons */
 Button {
     margin: 1 2;
+    min-width: 20;
 }
 
 Button:hover {
@@ -28,14 +31,35 @@ Button:pressed {
     background: $primary-darken-2;
 }
 
+Button#start,
+Button#install,
+Button#exit {
+    background: $accent;
+    color: $text;
+}
+
+Button#start:hover,
+Button#install:hover,
+Button#exit:hover {
+    background: $accent-darken-1;
+}
+
+Button#cancel {
+    background: $error;
+    color: $text;
+}
+
 /* Selection List */
 SelectionList {
     background: $surface;
     border: solid $primary;
+    width: 60;
+    height: auto;
+    max-height: 15;
 }
 
 SelectionList > .selection-list--option {
-    padding: 1 2;
+    padding: 0 2;
 }
 
 SelectionList > .selection-list--option:hover {
@@ -57,48 +81,101 @@ ProgressBar > .progress-bar--bar {
     background: $success;
 }
 
+/* Spinner */
+Spinner {
+    dock: top;
+}
+
 /* Static Text */
 Static {
-    padding: 1;
+    padding: 0 1;
+}
+
+/* ASCII Art */
+.ascii-art {
+    text-style: bold;
+    color: $primary;
 }
 
 /* Container styles */
-#welcome-container,
-#services-container,
-#install-container,
-#done-container {
-    background: $surface;
-    border: solid $primary;
-    padding: 2 4;
-}
-
-/* Title styles */
-#title {
+#logo {
     text-style: bold;
     text-align: center;
     color: $accent;
 }
 
+#title {
+    text-style: bold;
+    text-align: center;
+    color: $accent;
+    dock: top;
+}
+
 #subtitle {
     text-align: center;
     color: $text-muted;
+    dock: top;
+}
+
+#description {
+    text-align: center;
+    color: $text;
+}
+
+#features {
+    color: $text-muted;
+    text-align: center;
 }
 
 /* Status and logs */
-#status {
+#status-text {
     text-align: center;
-    text-style: bold;
     color: $success;
+    text-style: bold;
 }
 
 #current-task {
     text-align: center;
-    color: $text-muted;
+    color: $text;
+}
+
+#progress-container {
+    width: 50;
+    dock: top;
 }
 
 #logs {
     background: $panel;
     color: $text-muted;
-    padding: 1 2;
     border: solid $primary;
+    padding: 1;
+    width: 60;
+    height: 8;
+}
+
+/* Services list */
+#services-list {
+    background: $surface;
+    border: solid $primary;
+    width: 40;
+    padding: 1 2;
+}
+
+/* Success icon */
+#success-icon {
+    text-style: bold;
+    text-align: center;
+    dock: top;
+}
+
+/* Tip */
+#tip {
+    text-align: center;
+    color: $text-muted;
+}
+
+/* Scrollable container */
+VerticalScroll {
+    width: 100%;
+    height: auto;
 }

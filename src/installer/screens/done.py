@@ -1,6 +1,7 @@
 """Completion screen shown after installation."""
 
 from textual.app import ComposeResult
+from textual.containers import Center, Middle
 from textual.screen import Screen
 from textual.widgets import Button, Header, Footer, Static
 
@@ -13,11 +14,11 @@ class DoneScreen(Screen):
         align: center middle;
     }
 
-    #done-container {
-        width: 60;
-        height: auto;
-        border: solid $primary;
-        padding: 2 4;
+    #success-icon {
+        text-style: bold;
+        text-align: center;
+        color: $success;
+        text-shadow: $success 0 0 20;
     }
 
     #title {
@@ -29,17 +30,29 @@ class DoneScreen(Screen):
     #message {
         text-align: center;
         margin-top: 1;
-        margin-bottom: 2;
     }
 
     #services-list {
+        width: 40;
+        height: auto;
+        border: solid $primary;
+        padding: 1 2;
+        margin: 2 0;
+    }
+
+    #services-list Static {
+        color: $text;
+    }
+
+    #tip {
         text-align: center;
         color: $text-muted;
-        margin-bottom: 2;
+        margin-top: 2;
     }
 
     #exit-button {
-        width: 100%;
+        width: 20;
+        margin-top: 2;
     }
     """
 
@@ -47,33 +60,42 @@ class DoneScreen(Screen):
         services = self.app.selected_services
         
         service_names = {
-            "zsh": "ZSH + Powerlevel10k",
-            "git": "Git",
-            "basics": "Basic Tools",
-            "mariadb": "MariaDB",
-            "php": "PHP 8.4",
-            "composer": "Composer",
-            "nvm": "NVM + Node.js",
-            "valet": "Laravel Valet",
-            "laravel": "Laravel Installer",
-            "sites": "~/Sites Directory",
+            "zsh": "⚡ ZSH + Powerlevel10k",
+            "git": "📚 Git",
+            "basics": "🔧 Basic Tools",
+            "mariadb": "🗄️ MariaDB",
+            "php": "🐘 PHP 8.4",
+            "composer": "📦 Composer",
+            "nvm": "🟢 NVM + Node.js",
+            "valet": "🚀 Laravel Valet",
+            "laravel": "✨ Laravel Installer",
+            "sites": "📁 ~/Sites",
         }
         
         installed = [service_names.get(s, s) for s in services]
         
-        yield Header()
-        with Static(id="done-container"):
-            yield Static("Installation Complete!", id="title")
-            yield Static(
-                "Your Laravel development environment has been\n"
-                "successfully set up!",
-                id="message"
-            )
-            yield Static(
-                "Installed:\n" + "\n".join(f"  ✓ {s}" for s in installed),
-                id="services-list"
-            )
-            yield Button("Exit", id="exit", variant="primary")
+        yield Header(show_clock=True)
+        with Middle():
+            with Center():
+                yield Static("🎉", id="success-icon")
+                yield Static("Installation Complete!", id="title")
+                yield Static(
+                    "Your Laravel development environment\nhas been successfully set up!",
+                    id="message"
+                )
+                
+                yield Static(
+                    "Installed services:\n" + "\n".join(f"  ✓ {s}" for s in installed),
+                    id="services-list"
+                )
+                
+                yield Static(
+                    "Tip: Run 'valet install' to configure Laravel Valet\n"
+                    "Then create a new project with: laravel new myproject",
+                    id="tip"
+                )
+                
+                yield Button("✕ Exit", id="exit", variant="primary")
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

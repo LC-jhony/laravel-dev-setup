@@ -1,8 +1,6 @@
 """Main application class for Laravel Dev Setup Installer."""
 
-from textual.app import App, ComposeResult
-from textual.driver import Driver
-from textual.widgets import Header, Footer
+from textual.app import App
 
 from installer.screens.welcome import WelcomeScreen
 from installer.screens.services import ServicesScreen
@@ -29,10 +27,6 @@ class InstallerApp(App):
     def on_mount(self) -> None:
         """Called when the app is mounted."""
         self.push_screen("welcome")
-
-    def run(self, driver: Driver | None = None, *, inplace: bool = False) -> None:
-        """Run the application."""
-        return super().run(driver, inplace=inplace)
 
 
 def main() -> None:

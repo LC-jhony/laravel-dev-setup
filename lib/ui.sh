@@ -185,9 +185,11 @@ show_menu() {
   echo -ne "   ${ARROW}  ${WHITE}Your choice${RESET} ${DIM}[1-${count}]${RESET}: "
   read -r choice
   if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= count )); then
-    return "$choice"
+    _MENU_CHOICE="$choice"
+    return 0
   fi
-  return 1
+  _MENU_CHOICE="1"
+  return 0
 }
 
 # ─────────────────────────────────────────────────────────────

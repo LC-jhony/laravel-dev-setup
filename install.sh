@@ -84,7 +84,7 @@ configure_php() {
     "PHP 8.2 (Security fixes)" \
     "PHP 8.1 (Legacy)"
 
-  case $? in
+  case "$_MENU_CHOICE" in
     1) PHP_VERSION="8.5" ;;
     2) PHP_VERSION="8.4" ;;
     3) PHP_VERSION="8.3" ;;
@@ -96,7 +96,7 @@ configure_php() {
   show_menu "Select Package Profile" \
     "Standard (Full Laravel Extensions)" \
     "Minimal (CLI only)"
-  case $? in
+  case "$_MENU_CHOICE" in
     1) SELECTED_PACKAGES=("${PHP_PACKAGES_DEFAULT[@]}") ;;
     *) SELECTED_PACKAGES=(base cli common) ;;
   esac

@@ -7,8 +7,10 @@ echo "  Laravel Dev Setup Installer"
 echo "======================================"
 echo ""
 
-# Detect Linux distribution and set package manager
-install_system_deps() {
+# Detect Linux distribution and install Python
+install_python() {
+    echo "Installing Python 3..."
+    
     if command -v apt-get &> /dev/null; then
         echo "Detected: Debian/Ubuntu"
         sudo apt-get update
@@ -30,15 +32,14 @@ install_system_deps() {
         sudo apk add python3 py3-pip
     else
         echo "Error: Could not detect your Linux distribution."
-        echo "Please install Python 3.9+ and pip manually."
+        echo "Please install Python 3.9+ manually."
         exit 1
     fi
 }
 
-# Check if python3 is available
+# Check if python3 is available, install if not
 if ! command -v python3 &> /dev/null; then
-    echo "Python 3 not found. Installing system dependencies..."
-    install_system_deps
+    install_python
 fi
 
 echo "Using Python: $(python3 --version)"
@@ -53,12 +54,12 @@ find_pip() {
     elif python3 -m pip --version &> /dev/null; then
         echo "python3 -m pip"
     else
-        echo "pip not found. Trying to install..."
-        python3 -m ensurepip --upgrade 2>/dev/null || python3 -m pip install --upgrade pip 2>/dev/null
+        echo "pip not found. Trying ensurepip..."
+        python3 -m ensurepip --upgrade 2>/dev/null || true
         if python3 -m pip --version &> /dev/null; then
             echo "python3 -m pip"
         else
-            echo "Error: Could not install pip. Please install it manually."
+            echo "Error: Could not find or install pip."
             exit 1
         fi
     fi
@@ -68,9 +69,9 @@ PIP_CMD=$(find_pip)
 echo "Using pip: $PIP_CMD"
 echo ""
 
-echo "Installing Textual dependencies..."
+echo "Installing Textual and dev dependencies..."
 $PIP_CMD install --upgrade pip
-$PIP_CMD install textual "textual[dev]"
+$PIP_CMD install textual textual[dev]
 
 echo ""
 echo "Installing project dependencies..."

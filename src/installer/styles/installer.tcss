@@ -1,0 +1,104 @@
+/* Laravel Dev Setup Installer Styles */
+
+Screen {
+    background: $surface;
+    color: $text;
+}
+
+Header {
+    background: $primary;
+    color: $text;
+}
+
+Footer {
+    background: $primary;
+    color: $text;
+}
+
+/* Buttons */
+Button {
+    margin: 1 2;
+}
+
+Button:hover {
+    background: $primary-darken-1;
+}
+
+Button:pressed {
+    background: $primary-darken-2;
+}
+
+/* Selection List */
+SelectionList {
+    background: $surface;
+    border: solid $primary;
+}
+
+SelectionList > .selection-list--option {
+    padding: 1 2;
+}
+
+SelectionList > .selection-list--option:hover {
+    background: $primary-lighten-2;
+}
+
+SelectionList > .selection-list--option--selected {
+    background: $primary;
+    color: $text;
+}
+
+/* Progress Bar */
+ProgressBar {
+    background: $surface;
+    color: $success;
+}
+
+ProgressBar > .progress-bar--bar {
+    background: $success;
+}
+
+/* Static Text */
+Static {
+    padding: 1;
+}
+
+/* Container styles */
+#welcome-container,
+#services-container,
+#install-container,
+#done-container {
+    background: $surface;
+    border: solid $primary;
+    padding: 2 4;
+}
+
+/* Title styles */
+#title {
+    text-style: bold;
+    text-align: center;
+    color: $accent;
+}
+
+#subtitle {
+    text-align: center;
+    color: $text-muted;
+}
+
+/* Status and logs */
+#status {
+    text-align: center;
+    text-style: bold;
+    color: $success;
+}
+
+#current-task {
+    text-align: center;
+    color: $text-muted;
+}
+
+#logs {
+    background: $panel;
+    color: $text-muted;
+    padding: 1 2;
+    border: solid $primary;
+}

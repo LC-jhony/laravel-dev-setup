@@ -1,67 +1,71 @@
-from dataclasses import dataclass
-from functools import partial
+#!/bin/bash
 
-from textual import on
-from textual._color_constants import COLOR_NAME_TO_RGB
-from textual.app import App, ComposeResult
-from textual.command import Hit, Hits, Provider
-from textual.message import Message
-from textual.widgets import Header, Static
+set -e
 
+echo "======================================"
+echo "  Laravel Dev Setup Installer"
+echo "======================================"
+echo ""
 
-@dataclass
-class SwitchColor(Message, bubble=False):
-    """Message to tell the app to switch color."""
+# Detect Linux distribution and install Python
+install_python() {
+    echo "Installing Python 3..."
+    
+    if command -v apt-get &> /dev/null; then
+        echo "Detected: Debian/Ubuntu"
+        sudo apt-get update
+        sudo apt-get install -y python3 python3-pip python3-venv git curl
+    elif command -v dnf &> /dev/null; then
+        echo "Detected: Fedora/RHEL"
+        sudo dnf install -y python3 python3-pip git curl
+    elif command -v yum &> /dev/null; then
+        echo "Detected: CentOS"
+        sudo yum install -y python3 python3-pip git curl
+    elif command -v pacman &> /dev/null; then
+        echo "Detected: Arch Linux"
+        sudo pacman -Sy --noconfirm python python-pip git curl
+    elif command -v zypper &> /dev/null; then
+        echo "Detected: openSUSE"
+        sudo zypper install -y python3 python3-pip git curl
+    elif command -v apk &> /dev/null; then
+        echo "Detected: Alpine"
+        sudo apk add python3 py3-pip git curl
+    else
+        echo "Error: Could not detect your Linux distribution."
+        echo "Please install Python 3.9+ manually."
+        exit 1
+    fi
+}
 
-    color: str
+# Check if python3 is available, install if not
+if ! command -v python3 &> /dev/null; then
+    install_python
+fi
 
+echo "Python version: $(python3 --version)"
+echo ""
 
-class ColorCommands(Provider):
-    """A command provider to select colors."""
+# Install pip if not available
+if ! python3 -m pip --version &> /dev/null; then
+    echo "Installing pip..."
+    python3 -m ensurepip --upgrade || python3 -m pip install --upgrade pip
+fi
 
-    async def search(self, query: str) -> Hits:
-        """Called for each key."""
-        matcher = self.matcher(query)
-        for color in COLOR_NAME_TO_RGB.keys():
-            score = matcher.match(color)
-            if score > 0:
-                yield Hit(
-                    score,
-                    matcher.highlight(color),
-                    partial(self.app.post_message, SwitchColor(color)),
-                )
+echo "Using pip: $(python3 -m pip --version)"
+echo ""
 
+# Install Textual
+echo "Installing textual and textual[dev]..."
+python3 -m pip install textual "textual[dev]"
 
-class ColorBlock(Static):
-    """Simple block of color."""
+echo ""
+echo "Installing project dependencies..."
+python3 -m pip install -e .
 
-    DEFAULT_CSS = """
-    ColorBlock{
-        padding: 3 6;
-        margin: 1 2;
-        color: auto;
-    }
-    """
-
-
-class ColorApp(App):
-    """Experiment with the command palette."""
-
-    COMMANDS = App.COMMANDS | {ColorCommands}
-    TITLE = "Press ctrl + p and type a color"
-
-    def compose(self) -> ComposeResult:
-        yield Header()
-
-    @on(SwitchColor)
-    def switch_color(self, event: SwitchColor) -> None:
-        """Adds a color block on demand."""
-        color_block = ColorBlock(event.color)
-        color_block.styles.background = event.color
-        self.mount(color_block)
-        self.screen.scroll_end()
-
-
-if __name__ == "__main__":
-    app = ColorApp()
-    app.run()
+echo ""
+echo "======================================"
+echo "  Installation complete!"
+echo "======================================"
+echo ""
+echo "Run the installer:"
+echo "  python3 -m installer"

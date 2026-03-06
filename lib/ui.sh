@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-#   lib/ui.sh — Terminal UI helpers
+#   lib/ui.sh — Terminal UI helpers (Classic Edition)
 #   Colors · Banner · Boxes · Spinner · Prompts · Menus
 # ============================================================
 
@@ -25,7 +25,7 @@ COLS=$(tput cols 2>/dev/null || echo 72)
 [[ $COLS -gt 80 ]] && COLS=80
 
 # ─────────────────────────────────────────────────────────────
-#   Layout
+#   Layout & Boxes
 # ─────────────────────────────────────────────────────────────
 
 repeat_char() { printf "%${2}s" | tr ' ' "${1}"; }
@@ -61,12 +61,19 @@ draw_box_line() {
 show_banner() {
   clear
   echo ""
-  center_text "${BRIGHT_CYAN}${BOLD}██████╗ ██╗  ██╗██████╗ ${RESET}"
-  center_text "${BRIGHT_CYAN}${BOLD}██╔══██╗██║  ██║██╔══██╗${RESET}"
-  center_text "${BRIGHT_CYAN}${BOLD}██████╔╝███████║██████╔╝${RESET}"
-  center_text "${BRIGHT_CYAN}${BOLD}██╔═══╝ ██╔══██║██╔═══╝ ${RESET}"
-  center_text "${BRIGHT_CYAN}${BOLD}██║     ██║  ██║██║     ${RESET}"
-  center_text "${BRIGHT_CYAN}${BOLD}╚═╝     ╚═╝  ╚═╝╚═╝     ${RESET}"
+  center_text "${BRIGHT_CYAN}${BOLD} ██╗      █████╗ ██████╗  █████╗ ██╗   ██╗███████╗██╗     ${RESET}"
+  center_text "${BRIGHT_CYAN}${BOLD} ██║     ██╔══██╗██╔══██╗██╔══██╗██║   ██║██╔════╝██║     ${RESET}"
+  center_text "${BRIGHT_CYAN}${BOLD} ██║     ███████║██████╔╝███████║██║   ██║█████╗  ██║     ${RESET}"
+  center_text "${BRIGHT_CYAN}${BOLD} ██║     ██╔══██║██╔══██╗██╔══██║╚██╗ ██╔╝██╔══╝  ██║     ${RESET}"
+  center_text "${BRIGHT_CYAN}${BOLD} ███████╗██║  ██║██║  ██║██║  ██║ ╚████╔╝ ███████╗███████╗${RESET}"
+  center_text "${BRIGHT_CYAN}${BOLD} ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚══════╝${RESET}"
+  echo ""
+  center_text "${BRIGHT_WHITE}${BOLD}          ██████╗ ███████╗██╗   ██╗    ███████╗███████╗████████╗██╗   ██╗██████╗ ${RESET}"
+  center_text "${BRIGHT_WHITE}${BOLD}          ██╔══██╗██╔════╝██║   ██║    ██╔════╝██╔════╝╚══██╔══╝██║   ██║██╔══██╗${RESET}"
+  center_text "${BRIGHT_WHITE}${BOLD}          ██║  ██║█████╗  ██║   ██║    ███████╗█████╗     ██║   ██║   ██║██████╔╝${RESET}"
+  center_text "${BRIGHT_WHITE}${BOLD}          ██║  ██║██╔══╝  ╚██╗ ██╔╝    ╚════██║██╔══╝     ██║   ██║   ██║██╔═══╝ ${RESET}"
+  center_text "${BRIGHT_WHITE}${BOLD}          ██████╔╝███████╗ ╚████╔╝     ███████║███████╗   ██║   ╚██████╔╝██║     ${RESET}"
+  center_text "${BRIGHT_WHITE}${BOLD}          ╚═════╝ ╚══════╝  ╚═══╝      ╚══════╝╚══════╝   ╚═╝    ╚═════╝ ╚═╝     ${RESET}"
   echo ""
   center_text "${DIM}${WHITE}Installer for Linux — v1.2.0${RESET}"
   echo ""
@@ -90,7 +97,7 @@ msg_info() { echo -e "   ${INFO}  ${BRIGHT_CYAN}${1}${RESET}"; }
 msg_warn() { echo -e "   ${WARN}  ${BRIGHT_YELLOW}${1}${RESET}"; }
 
 # ─────────────────────────────────────────────────────────────
-#   Spinner
+#   Execution (Spinner & Step)
 # ─────────────────────────────────────────────────────────────
 
 spin_pid=""
@@ -118,7 +125,6 @@ spinner_stop() {
   echo -ne "\r\033[2K"
 }
 
-# Run a real command behind a spinner; exit on failure
 run_step() {
   local label="$1"; shift
   spinner_start "$label"
@@ -139,7 +145,7 @@ run_step() {
 }
 
 # ─────────────────────────────────────────────────────────────
-#   Prompts
+#   Interactivity
 # ─────────────────────────────────────────────────────────────
 
 prompt_input() {
@@ -185,69 +191,28 @@ show_menu() {
 }
 
 # ─────────────────────────────────────────────────────────────
-#   Summary / Done / Error screens
+#   Status Screens
 # ─────────────────────────────────────────────────────────────
 
-show_summary() {
-  local php_version="$1" os_info="$2" arch="$3" web_server="$4"
-  shift 4
-  local packages=("$@")
-
-  section "Installation Summary"
-  echo ""
-  draw_box_top
-  draw_box_line "${BOLD}${BRIGHT_WHITE}  Configuration${RESET}"
-  draw_box_line ""
-  draw_box_line "  ${DIM}PHP Version   :${RESET}  ${BRIGHT_CYAN}${BOLD}${php_version}${RESET}"
-  draw_box_line "  ${DIM}Repository    :${RESET}  ${WHITE}ondrej/php  (PPA / sury.org)${RESET}"
-  draw_box_line "  ${DIM}Web Server    :${RESET}  ${BRIGHT_WHITE}${web_server}${RESET}"
-  draw_box_line ""
-  draw_box_line "  ${DIM}Packages      :${RESET}"
-  # Print packages in rows of 3
-  local row=()
-  for pkg in "${packages[@]}"; do
-    row+=("$pkg")
-    if [[ ${#row[@]} -eq 3 ]]; then
-      draw_box_line "    ${BRIGHT_YELLOW}${row[0]}${RESET}  ${BRIGHT_YELLOW}${row[1]}${RESET}  ${BRIGHT_YELLOW}${row[2]}${RESET}"
-      row=()
-    fi
-  done
-  [[ ${#row[@]} -gt 0 ]] && draw_box_line "    ${BRIGHT_YELLOW}${row[*]}${RESET}"
-  draw_box_line ""
-  draw_box_line "  ${DIM}OS Detected   :${RESET}  ${BRIGHT_WHITE}${os_info}${RESET}"
-  draw_box_line "  ${DIM}Architecture  :${RESET}  ${BRIGHT_WHITE}${arch}${RESET}"
-  draw_box_line ""
-  draw_box_bottom
-  echo ""
-}
-
-show_done() {
-  local version="$1"
+show_success() {
+  local title="${1:-Installation Complete!}"
+  local subtitle="${2:-The component is ready to use}"
   echo ""
   draw_line "═" "$BRIGHT_GREEN"
   center_text ""
-  center_text "${BRIGHT_GREEN}${BOLD}  Installation Complete!${RESET}"
-  center_text "${DIM}PHP ${version} is ready to use${RESET}"
+  center_text "${BRIGHT_GREEN}${BOLD}  ${title}${RESET}"
+  center_text "${DIM}${subtitle}${RESET}"
   center_text ""
   draw_line "═" "$BRIGHT_GREEN"
   echo ""
-  center_text "${DIM}Run ${BRIGHT_CYAN}php --version${DIM} to verify${RESET}"
-  echo ""
-  if command -v "php${version}" &>/dev/null; then
-    echo -e "   ${INFO}  $("php${version}" --version | head -1)"
-    echo ""
-  elif command -v php &>/dev/null; then
-    echo -e "   ${INFO}  $(php --version | head -1)"
-    echo ""
-  fi
 }
 
 show_error() {
   spinner_stop
+  local message="${1:-Operation Failed}"
   echo ""
   draw_line "═" "$BRIGHT_RED"
-  center_text "${BRIGHT_RED}${BOLD}  Installation Failed${RESET}"
-  center_text "${DIM}${1}${RESET}"
+  center_text "${BRIGHT_RED}${BOLD}  ${message}${RESET}"
   draw_line "═" "$BRIGHT_RED"
   echo ""
 }

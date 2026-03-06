@@ -1,15 +1,15 @@
 #!/bin/bash
 
-set -e
-
 echo "======================================"
 echo "  Laravel Dev Setup Installer"
 echo "======================================"
 echo ""
 
-# Detect Linux distribution and install Python
-install_python() {
-    echo "Installing Python 3..."
+# Check if python3 exists
+if command -v python3 &> /dev/null; then
+    echo "✓ Python3 found: $(python3 --version)"
+else
+    echo "✗ Python3 not found. Installing..."
     
     if command -v apt-get &> /dev/null; then
         echo "Detected: Debian/Ubuntu"
@@ -31,68 +31,41 @@ install_python() {
         echo "Detected: Alpine"
         sudo apk add python3 py3-pip git curl
     else
-        echo "Error: Could not detect your Linux distribution."
-        echo "Please install Python 3.9+ manually."
+        echo "ERROR: Could not detect Linux distribution"
         exit 1
     fi
-}
-
-# Check if python3 is available, install if not
-if ! command -v python3 &> /dev/null; then
-    install_python
 fi
 
-echo "Python version: $(python3 --version)"
 echo ""
+echo "Checking pip..."
+if command -v pip3 &> /dev/null; then
+    echo "✓ pip3 found"
+    PIP_CMD="pip3"
+elif python3 -m pip --version &> /dev/null; then
+    echo "✓ pip via python3 -m pip"
+    PIP_CMD="python3 -m pip"
+else
+    echo "Installing pip..."
+    python3 -m ensurepip --upgrade || python3 -m pip install --upgrade pip
+    PIP_CMD="python3 -m pip"
+fi
 
-# Find pip command
-find_pip() {
-    if command -v pip3 &> /dev/null; then
-        echo "pip3"
-    elif command -v pip &> /dev/null; then
-        echo "pip"
-    elif python3 -m pip --version &> /dev/null; then
-        echo "python3 -m pip"
-    else
-        echo "pip not found. Trying ensurepip..."
-        python3 -m ensurepip --upgrade 2>/dev/null || true
-        python3 -m pip install --upgrade pip 2>/dev/null || true
-        
-        if python3 -m pip --version &> /dev/null; then
-            echo "python3 -m pip"
-        else
-            echo "ERROR: Could not find or install pip"
-            exit 1
-        fi
-    fi
-}
-
-PIP_CMD=$(find_pip)
-echo "Using: $PIP_CMD"
-echo ""
-
-# Upgrade pip
-echo "Upgrading pip..."
-python3 -m pip install --upgrade pip
-
-# Install Textual
 echo ""
 echo "Installing textual and textual[dev]..."
-python3 -m pip install textual "textual[dev]"
+python3 -m pip install --user textual "textual[dev]" --break-system-packages 2>/dev/null || \
+python3 -m pip install --user textual "textual[dev]" || \
+sudo pip3 install textual "textual[dev]"
 
 echo ""
 echo "Installing project dependencies..."
-python3 -m pip install -e .
+python3 -m pip install -e . --break-system-packages 2>/dev/null || \
+python3 -m pip install -e . || \
+sudo pip3 install -e .
 
 echo ""
 echo "======================================"
 echo "  Installation complete!"
 echo "======================================"
 echo ""
-echo "Verify installation:"
-echo "  python3 -c 'import textual; print(textual.__version__)'"
-echo ""
-echo "Run the installer:"
+echo "Run with:"
 echo "  python3 -m installer"
-echo "  or"
-echo "  textual run src/installer/app.py"

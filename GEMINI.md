@@ -39,9 +39,14 @@ bash install.sh
 - **Modularity**: New components should be added as a separate script in `installers/` and registered in the `STATES` array and loop within `install.sh`.
 
 ## ⚠️ Known Issues / TODOs
-- **File Naming Mismatch**: The `install.sh` script expects `installers/node.sh`, but the file is currently named `installers/nodejs.sh`.
-- **Duplicate Scripts**: Currently, `installers/php.sh` appears to be a duplicate of `installers/shell.sh`. This needs to be corrected to implement actual PHP installation logic.
-- **Cross-Platform**: The project is strictly designed for Linux (Ubuntu/Debian). It will not work on macOS (native) or Windows (native) without WSL.
+- **Platform Limitations**: The project is strictly designed for Linux (Ubuntu/Debian). It will not work on macOS (native) or Windows (native) without WSL.
+- **Service Integration**: While `php-fpm` is installed, manual integration for Apache/Nginx (if not using Valet) can be done using the helper functions in `installers/php.sh`.
+
+## ✅ Resolved
+- **File Naming Mismatch**: `installers/node.sh` is now correctly named and consistent across all scripts.
+- **Script Duplication**: `installers/php.sh` and `installers/shell.sh` have been verified as unique and correctly implemented.
+- **Python UI Integration**: `main.py` now correctly handles multi-step PHP installation (Repo + Engine + Defaults).
+- **PHP Extensions**: `install_php` now defaults to a full extension set if no specific packages are provided.
 
 ## 📦 Component Overview
 - **Shell**: Zsh + Powerlevel10k + Zinit + Auto-suggestions + Syntax highlighting.

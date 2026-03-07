@@ -125,10 +125,29 @@ def run_bash_cmd(cmd_label, script_name, extra_args=None):
     console.print(f"\n  [bold cyan]INITIALIZING[/] [white]{cmd_label}[/]")
     console.print(f"  [dim]──────────────────────────────────────────────────[/]")
     
-    # We define SUDO=sudo to ensure scripts have the correct variable
-    cmd = f"export SUDO=sudo && source lib/ui.sh && source lib/detect.sh && source lib/repo.sh && source installers/{script_name}.sh && install_{script_name}"
-    if extra_args:
-        cmd += f" {' '.join(extra_args)}"
+    # Base command: load environment and installer
+    cmd_parts = [
+        "export SUDO=sudo",
+        "source lib/ui.sh",
+        "source lib/detect.sh",
+        "source lib/repo.sh",
+        f"source installers/{script_name}.sh",
+        "detect_os"
+    ]
+    
+    # Specific logic for components
+    if script_name == "php":
+        version = extra_args[0] if extra_args else "8.4"
+        cmd_parts.append("setup_repo")
+        cmd_parts.append(f"install_php {version}")
+        cmd_parts.append(f"set_default_php {version}")
+    else:
+        call_cmd = f"install_{script_name}"
+        if extra_args:
+            call_cmd += f" {' '.join(extra_args)}"
+        cmd_parts.append(call_cmd)
+    
+    cmd = " && ".join(cmd_parts)
     
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"

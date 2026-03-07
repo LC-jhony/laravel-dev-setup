@@ -14,6 +14,12 @@ PHP_PACKAGES_DEFAULT=(
 install_php() {
   local version="$1"; shift
   local packages=("$@")
+  
+  # Use default package list if none provided
+  if [[ ${#packages[@]} -eq 0 ]]; then
+    packages=("${PHP_PACKAGES_DEFAULT[@]}")
+  fi
+
   local apt_packages=()
 
   section "Installing PHP ${version}"

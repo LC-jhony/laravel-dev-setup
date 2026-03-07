@@ -25,7 +25,7 @@ detect_os() {
       DISTRO_TYPE="debian"
       ;;
     *)
-      echo -e "\n   ${FAIL}  ${BRIGHT_RED}Unsupported distro: ${OS_ID}${RESET}"
+      echo -e "\n   ${RED}${FAIL}  Unsupported distro: ${OS_ID}${RESET}"
       echo -e "   ${INFO}  This installer supports Ubuntu and Debian (and derivatives)."
       exit 1
       ;;

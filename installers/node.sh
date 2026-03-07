@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-#   lib/node.sh — NVM + Node.js installation
+#   installers/node.sh — NVM + Node.js installation
 #
 #   Installs NVM v0.40.4, then Node.js 24 via nvm
 # ============================================================

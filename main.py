@@ -3,12 +3,14 @@ import sys
 import subprocess
 import time
 import re
+import threading
 from rich.console import Console
 from rich.live import Live
 from rich.align import Align
 from rich.text import Text
 from rich.rule import Rule
 from rich.console import Group
+from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.progress import Progress, BarColumn, TextColumn, SpinnerColumn, TimeElapsedColumn
 
@@ -36,7 +38,7 @@ states = {c["id"]: True for c in COMPONENTS}
 def get_header(title_str="LARAVEL DEV SETUP", subtitle_str="PREMIUM ENVIRONMENT BOOTSTRAP"):
     return Group(
         Text("\n"),
-        Align.center(Text(title_str, style="bold cyan")),
+        Align.center(Text(title_str, style="bold cyan tracking5")),
         Align.center(Text(subtitle_str, style="dim italic")),
         Text("\n"),
         Rule(style="dim #333333")
@@ -123,13 +125,11 @@ def run_bash_cmd(cmd_label, script_name, extra_args=None, progress=None):
     full_cmd = " && ".join(cmd_parts)
     
     try:
-        # Pausamos el progreso para que la terminal sea 100% interactiva
         if progress:
             progress.stop()
             console.print(f"\n  [bold cyan]▶[/] [white]Deploying:[/] [bold white]{cmd_label}[/]")
             console.print(f"  [dim]──────────────────────────────────────────────────[/]\n")
         
-        # Ejecutamos con herencia de stdio para que formularios y sudo funcionen
         result = subprocess.run(["bash", "-c", full_cmd], check=False)
         
         if progress:
@@ -163,18 +163,45 @@ def main():
         ]
         selected_versions['php'] = interactive_select("PHP Engine", opts)
 
-    # 3. Confirmación y Sudo Inicial
+    # 3. Escalación de Privilegios Rich
     console.clear()
     console.print(get_header())
-    console.print("\n  [bold yellow]PRIVILEGE ESCALATION[/]")
-    console.print("  [dim]Authentication required to apply system changes.[/]\n")
-    try:
-        subprocess.run(["sudo", "-v"], check=True)
-    except:
-        console.print("\n  [bold red]ABORTED[/] [dim]Authentication failed.[/]\n")
-        sys.exit(1)
+    
+    panel = Panel(
+        Text("Administrative privileges are required to configure your system.\nPlease enter your password to authorize the deployment.", justify="center"),
+        title="[bold yellow]🔒 PRIVILEGE ESCALATION",
+        border_style="yellow",
+        padding=(1, 2)
+    )
+    console.print("\n")
+    console.print(Align.center(panel))
+    console.print("\n")
+    
+    authenticated = False
+    while not authenticated:
+        pwd = Prompt.ask("  [bold cyan]Password[/]", password=True)
+        # Validar password con sudo -S
+        proc = subprocess.Popen(["sudo", "-S", "-v"], stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        proc.communicate(input=f"{pwd}\n".encode())
+        
+        if proc.returncode == 0:
+            authenticated = True
+            msg = Text("✓ Authentication Successful", style="bold green")
+            console.print(Align.center(msg))
+            time.sleep(1)
+        else:
+            console.print("  [bold red]✖ Incorrect password. Please try again.[/]")
 
-    # 4. Ejecución
+    # 4. Sudo Keep-Alive (Hilo de fondo)
+    def keep_sudo_alive():
+        while True:
+            # sudo -n (non-interactive) para refrescar el timestamp
+            subprocess.run(["sudo", "-n", "true"], check=False)
+            time.sleep(60)
+            
+    threading.Thread(target=keep_sudo_alive, daemon=True).start()
+
+    # 5. Ejecución
     selected_list = [c for c in COMPONENTS if states[c['id']]]
     if not selected_list:
         console.print("\n  [yellow]No items selected. Exiting.[/]\n")
@@ -193,7 +220,6 @@ def main():
         overall_task = progress.add_task("[bold white]Overall Deployment", total=len(selected_list))
         
         for c in selected_list:
-            # Caso Node.js pide versión manual antes de empezar su tarea
             args = []
             if c['id'] == 'node':
                 progress.stop()
@@ -205,8 +231,6 @@ def main():
                 args = [selected_versions['php']]
             
             comp_task = progress.add_task(f"[cyan]Installing {c['name']}...", total=None)
-            
-            # La función run_bash_cmd ahora detiene/inicia el progreso internamente
             success = run_bash_cmd(c['name'], c['id'], args, progress)
             
             if success:

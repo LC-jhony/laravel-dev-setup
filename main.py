@@ -2,16 +2,15 @@ import os
 import sys
 import subprocess
 import time
+import re
 from rich.console import Console
 from rich.live import Live
-from rich.prompt import Prompt
-from rich import box
 from rich.align import Align
 from rich.text import Text
 from rich.rule import Rule
 from rich.console import Group
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
-from rich.style import Style
+from rich.panel import Panel
+from rich.progress import Progress, BarColumn, TextColumn
 
 console = Console()
 
@@ -29,183 +28,36 @@ COMPONENTS = [
 ]
 
 states = {c["id"]: True for c in COMPONENTS}
-current_index = 0
 
 # ─────────────────────────────────────────────────────────────
-#   UI Components (Minimalist Pro)
+#   UI Helpers
 # ─────────────────────────────────────────────────────────────
 
-def get_header():
-    # Spaced out header for a modern boutique look
-    title = Text("L A R A V E L   D E V   S E T U P", style="bold cyan")
-    subtitle = Text("PREMIUM ENVIRONMENT BOOTSTRAP", style="dim italic")
-    
+def clean_ansi(text):
+    """Elimina códigos de color ANSI y caracteres de control para evitar desorden."""
+    ansi_escape = re.compile(r'(?:\x1B[@-_][0-?]*[ -/]*[@-~])')
+    return ansi_escape.sub('', text).replace('\r', '').strip()
+
+def get_header(title_str="LARAVEL DEV SETUP", subtitle_str="PREMIUM ENVIRONMENT BOOTSTRAP"):
     return Group(
         Text("\n"),
-        Align.center(title),
-        Align.center(subtitle),
+        Align.center(Text(title_str, style="bold cyan tracking5")),
+        Align.center(Text(subtitle_str, style="dim italic")),
         Text("\n"),
         Rule(style="dim #333333")
     )
 
-def get_menu_content():
-    items = []
-    items.append(Text("\n")) # Top padding
-    
-    for i, c in enumerate(COMPONENTS):
-        is_active = (i == current_index)
-        is_selected = states[c["id"]]
-        
-        # Iconography: High contrast circular symbols
-        # ● = Enabled, ○ = Disabled
-        if is_selected:
-            mark = " ● "
-            mark_style = "bold cyan"
-        else:
-            mark = " ○ "
-            mark_style = "dim"
-            
-        # Selection Indicator & Line Background
-        line = Text()
-        
-        if is_active:
-            # Active focus state
-            line.append("  ┃ ", style="bold cyan")
-            line.append(mark, style=mark_style)
-            line.append(f"{c['name']:<25}", style="bold white")
-            line.append(f" {c['desc']}", style="dim")
-        else:
-            # Idle state
-            line.append("    ", style="dim")
-            line.append(mark, style=mark_style)
-            line.append(f"{c['name']:<25}", style="dim" if not is_selected else "white")
-            line.append(f" {c['desc']}", style="dim italic")
-        
-        items.append(line)
-        items.append(Text("\n")) # List item spacing
-
-    return Align.center(Group(*items))
-
-def get_footer():
-    # Tenue and elegant footer
-    shortcuts = [
-        ("↑↓", "Navigate"),
-        ("SPACE", "Toggle"),
-        ("ENTER", "Initialize"),
-        ("Q", "Quit")
-    ]
-    
-    footer_text = Text()
-    for i, (key, action) in enumerate(shortcuts):
-        footer_text.append(f" {key} ", style="bold cyan")
-        footer_text.append(f"{action}", style="dim")
-        if i < len(shortcuts) - 1:
-            footer_text.append("   •  ", style="dim #333333")
-            
-    return Group(
-        Rule(style="dim #333333"),
-        Align.center(footer_text),
-        Text("\n")
-    )
-
-def draw_main_ui():
-    return Group(
-        get_header(),
-        get_menu_content(),
-        get_footer()
-    )
-
 # ─────────────────────────────────────────────────────────────
-#   Execution Logic
+#   Interactive Selector System
 # ─────────────────────────────────────────────────────────────
 
-def run_bash_cmd(cmd_label, script_name, extra_args=None, progress=None, task_id=None):
-    # Minimalist execution banner
-    if not progress:
-        console.print(f"\n  [bold cyan]INITIALIZING[/] [white]{cmd_label}[/]")
-        console.print(f"  [dim]──────────────────────────────────────────────────[/]")
+def interactive_select(title, options, multi=False, initial_states=None):
+    """Generic selector for components or versions."""
+    idx = 0
+    # Si es multi-selección usamos los estados pasados, si no, inicializamos uno solo
+    selected_states = initial_states if initial_states else {opt['id']: False for opt in options}
     
-    # Base command: load environment and installer
-    cmd_parts = [
-        "export SUDO=sudo",
-        "source lib/ui.sh",
-        "source lib/detect.sh",
-        "source lib/repo.sh",
-        f"source installers/{script_name}.sh",
-        "detect_os"
-    ]
-    
-    # Specific logic for components
-    if script_name == "php":
-        version = extra_args[0] if extra_args else "8.4"
-        cmd_parts.append("setup_repo")
-        cmd_parts.append(f"install_php {version}")
-        cmd_parts.append(f"set_default_php {version}")
-    else:
-        call_cmd = f"install_{script_name}"
-        if extra_args:
-            call_cmd += f" {' '.join(extra_args)}"
-        cmd_parts.append(call_cmd)
-    
-    cmd = " && ".join(cmd_parts)
-    
-    env = os.environ.copy()
-    env["PYTHONIOENCODING"] = "utf-8"
-    env["LANG"] = "en_US.UTF-8"
-    
-    try:
-        process = subprocess.Popen(
-            ["bash", "-c", cmd],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            env=env, bufsize=0
-        )
-        
-        line_buffer = ""
-        while True:
-            char = process.stdout.read(1)
-            if not char and process.poll() is not None:
-                break
-            if char:
-                try:
-                    decoded = char.decode('utf-8', errors='replace')
-                    line_buffer += decoded
-                    if decoded == '\n':
-                        clean_line = line_buffer.replace('\n', '').replace('\r', '')
-                        if progress:
-                            progress.console.print(f"  [dim]│[/] {clean_line}")
-                        else:
-                            sys.stdout.write(f"  [dim]│ [/]{line_buffer}")
-                            sys.stdout.flush()
-                        line_buffer = ""
-                except:
-                    pass
-            
-        process.wait()
-        
-        if process.returncode == 0:
-            if not progress:
-                console.print(f"\n  [bold green]SUCCESS[/] [dim]{cmd_label} configured.[/]")
-        else:
-            if not progress:
-                console.print(f"\n  [bold red]FAILURE[/] [dim]Installation interrupted.[/]")
-            
-        return process.returncode == 0
-    except Exception as e:
-        if progress:
-            progress.console.print(f"\n  [bold red]ERROR[/] [dim]{e}[/]")
-        else:
-            console.print(f"\n  [bold red]ERROR[/] [dim]{e}[/]")
-        return False
-
-# ─────────────────────────────────────────────────────────────
-#   Main Entry Point
-# ─────────────────────────────────────────────────────────────
-
-def main():
-    global current_index
     import tty, termios
-    
-    # Utility for raw keyboard input
     def getch():
         fd = sys.stdin.fileno()
         old_settings = termios.tcgetattr(fd)
@@ -217,96 +69,155 @@ def main():
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return ch
 
-    # Interaction Loop
-    with Live(draw_main_ui(), auto_refresh=False, screen=True) as live:
+    def render():
+        items = [Text("\n")]
+        for i, opt in enumerate(options):
+            is_active = (i == idx)
+            is_sel = selected_states[opt['id']] if multi else (i == idx)
+            
+            mark = " ● " if (multi and is_sel) or (not multi and is_active) else " ○ "
+            mark_style = "bold cyan" if (multi and is_sel) or (not multi and is_active) else "dim"
+            
+            line = Text()
+            line.append("  ┃ " if is_active else "    ", style="bold cyan")
+            line.append(mark, style=mark_style)
+            line.append(f"{opt['name']:<25}", style="bold white" if is_active else "dim")
+            if 'desc' in opt:
+                line.append(f" {opt['desc']}", style="dim italic")
+            
+            items.append(line)
+            items.append(Text("\n"))
+            
+        footer_text = Text()
+        shortcuts = [("↑↓", "Nav"), ("SPC", "Toggle") if multi else ("ENT", "Select"), ("Q", "Quit")]
+        for k, a in shortcuts:
+            footer_text.append(f" {k} ", style="bold cyan"); footer_text.append(f"{a}  ", style="dim")
+
+        return Group(
+            get_header(title.upper(), "INTERACTIVE SELECTION"),
+            Align.center(Group(*items)),
+            Rule(style="dim #333333"),
+            Align.center(footer_text),
+            Text("\n")
+        )
+
+    with Live(render(), auto_refresh=False, screen=True) as live:
         while True:
             key = getch()
-            
-            # Navigation
-            if key == '\x1b[A': # Up
-                current_index = (current_index - 1) % len(COMPONENTS)
-            elif key == '\x1b[B': # Down
-                current_index = (current_index + 1) % len(COMPONENTS)
-            
-            # Toggling
-            elif key == ' ':
-                cid = COMPONENTS[current_index]["id"]
-                states[cid] = not states[cid]
-            
-            # Confirmation
+            if key == '\x1b[A': idx = (idx - 1) % len(options)
+            elif key == '\x1b[B': idx = (idx + 1) % len(options)
+            elif key == ' ' and multi:
+                cid = options[idx]['id']
+                selected_states[cid] = not selected_states[cid]
             elif key in ('\r', '\n'):
-                break
-                
-            # Exit
-            elif key.lower() == 'q':
-                sys.exit(0)
-                
-            live.update(draw_main_ui(), refresh=True)
+                if not multi: return options[idx]['id']
+                return selected_states
+            elif key.lower() == 'q': sys.exit(0)
+            live.update(render(), refresh=True)
 
-    # Summary and Sudo
+# ─────────────────────────────────────────────────────────────
+#   Execution Engine
+# ─────────────────────────────────────────────────────────────
+
+def run_bash_cmd(cmd_label, script_name, extra_args=None):
+    console.print(f"\n  [bold cyan]▶[/] [white]Deploying:[/] [bold white]{cmd_label}[/]")
+    
+    cmd = f"export SUDO=sudo && source lib/ui.sh && source lib/detect.sh && source lib/repo.sh && source installers/{script_name}.sh && install_{script_name}"
+    if extra_args:
+        cmd += f" {' '.join(extra_args)}"
+    
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    
+    try:
+        process = subprocess.Popen(
+            ["bash", "-c", cmd],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            env=env, bufsize=0
+        )
+        
+        while True:
+            char = process.stdout.read(1)
+            if not char and process.poll() is not None: break
+            if char:
+                decoded = char.decode('utf-8', errors='ignore')
+                # Filtramos para que no se vea desordenado
+                if decoded == '\n':
+                    sys.stdout.write('\n     [dim]• [/]')
+                else:
+                    sys.stdout.write(decoded)
+                sys.stdout.flush()
+            
+        process.wait()
+        return process.returncode == 0
+    except Exception as e:
+        console.print(f"\n  [bold red]ERROR[/] {e}")
+        return False
+
+# ─────────────────────────────────────────────────────────────
+#   Main Entry Point
+# ─────────────────────────────────────────────────────────────
+
+def main():
+    # 1. Selección de Componentes
+    global states
+    states = interactive_select("Components", COMPONENTS, multi=True, initial_states=states)
+
+    # 2. Configuración de Versiones
+    selected_versions = {}
+    if states['php']:
+        opts = [{"id": v, "name": f"PHP {v}"} for v in ["8.4", "8.3", "8.2", "8.1"]]
+        selected_versions['php'] = interactive_select("PHP Engine", opts)
+    
+    if states['node']:
+        opts = [{"id": v, "name": f"Node.js {v}"} for v in ["22", "20", "18", "lts", "node"]]
+        selected_versions['node'] = interactive_select("Node.js Version", opts)
+
+    # 3. Confirmación y Sudo
     console.clear()
     console.print(get_header())
-    
-    selected = [c for c in COMPONENTS if states[c["id"]]]
-    if not selected:
-        console.print("\n  [yellow]No items selected. Exiting.[/]\n")
-        return
-
-    # Modern Sudo Prompt
     console.print("\n  [bold yellow]PRIVILEGE ESCALATION[/]")
-    console.print("  [dim]System password required for deployment.[/]\n")
+    console.print("  [dim]Authentication required to apply system changes.[/]\n")
     try:
         subprocess.run(["sudo", "-v"], check=True)
     except:
-        console.print("\n  [bold red]ABORTED[/] [dim]Authentication failed.[/]\n")
         sys.exit(1)
 
-    # Setup Progress Display
+    # 4. Ejecución
+    selected_list = [c for c in COMPONENTS if states[c['id']]]
+    
     with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(bar_width=40, style="dim", complete_style="cyan"),
-        TaskProgressColumn(),
-        TimeElapsedColumn(),
-        console=console,
-        expand=False
+        TextColumn("  [bold cyan]{task.description:<30}"),
+        BarColumn(bar_width=40, style="#222222", complete_style="cyan"),
+        TextColumn("[bold white]{task.percentage:>3.0f}%"),
+        console=console
     ) as progress:
         
-        overall_task = progress.add_task("[bold white]Overall Deployment", total=len(selected))
+        overall_task = progress.add_task("Total Progress", total=len(selected_list))
         
-        for c in selected:
-            args = None
-            if c["id"] == "php":
-                progress.stop() # Pause progress to ask
-                console.print("\n")
-                version = Prompt.ask("  [bold cyan]?[/] [white]Select PHP Engine[/]", choices=["8.4", "8.3", "8.2", "8.1"], default="8.4")
-                args = [version]
-                progress.start()
+        for c in selected_list:
+            progress.update(overall_task, description=f"Installing {c['name']}")
             
-            if c["id"] == "node":
-                progress.stop()
-                console.print("\n")
-                version = Prompt.ask("  [bold cyan]?[/] [white]Select Node.js Version[/]", choices=["22", "20", "18", "lts", "node"], default="lts")
-                args = [version]
-                progress.start()
-
-            # Add a specific task for this component
-            comp_task = progress.add_task(f"[cyan]Installing {c['name']}...", total=None)
+            args = []
+            if c['id'] == 'php': args = [selected_versions['php']]
+            if c['id'] == 'node': args = [selected_versions['node']]
             
-            success = run_bash_cmd(c["name"], c["id"], args, progress, comp_task)
+            # Detenemos temporalmente el progreso para mostrar el log limpio
+            progress.stop()
+            success = run_bash_cmd(c['name'], c['id'], args)
+            progress.start()
             
-            if success:
-                progress.update(comp_task, description=f"[green]✓ {c['name']} Complete", completed=100, total=100)
-                progress.advance(overall_task)
-            else:
-                progress.update(comp_task, description=f"[red]✗ {c['name']} Failed")
+            if not success:
+                console.print(f"\n  [bold red]✖ {c['name']} failed.[/]")
                 sys.exit(1)
+            
+            progress.advance(overall_task)
+        
+        progress.update(overall_task, description="All systems ready")
 
-    # Final Success Message
-    console.print("\n\n" + "  [bold green]DEPLOYMENT COMPLETE[/]")
-    console.print("  [dim]The environment has been optimized and is ready for use.[/]\n")
-    console.print("  [dim]Please restart your terminal session.[/]\n")
-
+    console.print("\n\n" + Align.center(Text("✨ DEPLOYMENT SUCCESSFUL", style="bold green")))
+    console.print(Align.center(Text("Environment is optimized. Please restart your terminal.", style="dim")))
+    console.print("\n")
 
 if __name__ == "__main__":
     main()

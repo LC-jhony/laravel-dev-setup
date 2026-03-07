@@ -27,12 +27,12 @@ CACHED_PASSWORD = None
 KEEPALIVE_STARTED = False
 
 COMPONENTS = [
-    {"id": "shell",    "name": "Shell Environment", "desc": "Zsh + P10k + Modern CLI Tools", "bin": "zsh"},
-    {"id": "php",      "name": "PHP Engine",        "desc": "🐘 Engine + Laravel Extensions", "bin": "php"},
-    {"id": "mariadb",  "name": "MariaDB Database",  "desc": "🗄️ SQL Server + Security", "bin": "mariadb"},
-    {"id": "node",     "name": "Node.js (NVM)",     "desc": "🟢 JS Runtime & Package Manager", "bin": "node"},
-    {"id": "composer", "name": "PHP Composer",      "desc": "📦 Global Dependencies", "bin": "composer"},
-    {"id": "valet",    "name": "Laravel Valet",     "desc": "⚡ Local Dev Server (.test)", "bin": "valet"},
+    {"id": "shell",    "name": "Shell Environment", "icon": "[bold white]>_[/]", "desc": "Zsh + P10k + Modern CLI Tools", "bin": "zsh"},
+    {"id": "php",      "name": "PHP Engine",        "icon": "[bold blue]🐘[/]", "desc": "Engine + Laravel Extensions", "bin": "php"},
+    {"id": "mariadb",  "name": "MariaDB Database",  "icon": "[bold white]🗄️[/]", "desc": "SQL Server + Security", "bin": "mariadb"},
+    {"id": "node",     "name": "Node.js (NVM)",     "icon": "[bold green]⬢[/]", "desc": "JS Runtime & Package Manager", "bin": "node"},
+    {"id": "composer", "name": "PHP Composer",      "icon": "[bold yellow]📦[/]", "desc": "Global Dependencies", "bin": "composer"},
+    {"id": "valet",    "name": "Laravel Valet",     "icon": "[bold cyan]⚡[/]", "desc": "Local Dev Server (.test)", "bin": "valet"},
 ]
 
 # ─────────────────────────────────────────────────────────────
@@ -162,10 +162,19 @@ def main():
         console.clear(); console.print(get_header("MENU DE SELECCIÓN", "↑↓ Navegar · Espacio para marcar · Enter confirmar"))
         for i, c in enumerate(COMPONENTS):
             active = (i == idx)
-            mark = " [bold cyan]●[/] " if states[c['id']] else " [dim]○[/] "
-            name = Text(f"{c['name']:<25}", style="bold white" if active else ("white" if states[c['id']] else "dim"))
-            tag = f" [green][v{installed_info[c['id']]}] [/]" if installed_info[c['id']] else ""
-            console.print(Text("  ┃ " if active else "    ", style="cyan") + mark + name + tag + Text(f" {c['desc']}", style="dim italic"))
+            mark_text = " [bold cyan]●[/] " if states[c['id']] else " [dim]○[/] "
+            icon_text = f"{c['icon']} "
+            tag_text = f" [green][v{installed_info[c['id']]}] [/]" if installed_info[c['id']] else ""
+            
+            # Construimos la línea usando markup para que Rich procese todo correctamente
+            line = Text.from_markup(
+                f"{'  ┃ ' if active else '    '}{mark_text}{icon_text}",
+                style="cyan" if active else "default"
+            )
+            line.append(f"{c['name']:<22}", style="bold white" if active else ("white" if states[c['id']] else "dim"))
+            line.append(Text.from_markup(tag_text))
+            line.append(f" {c['desc']}", style="dim italic")
+            console.print(line)
         
         key = getch()
         if key == '\x1b':
@@ -197,7 +206,6 @@ def main():
             c = next(comp for comp in COMPONENTS if comp['id'] == sid)
             args = []
             
-            # PREGUNTAS JUST-IN-TIME (Justo antes de empezar la tarea)
             if sid == 'php':
                 progress.stop(); console.clear(); console.print(get_header("PHP ENGINE", "Selecciona la versión a instalar"))
                 v_opts = ["8.4", "8.3", "8.2", "8.1"]; v_idx = 0
@@ -215,10 +223,9 @@ def main():
             
             elif sid == 'node':
                 progress.stop(); console.print("\n")
-                node_v = Prompt.ask("  [bold cyan]?[/] [white]Ingresa versión de Node.js[/] [dim](ej: 22, lts, 20.10)[/]", default="lts")
+                node_v = Prompt.ask(f"  [bold cyan]?[/] [white]Ingresa versión de Node.js[/] [dim](ej: 22, lts, 20.10)[/]", default="lts")
                 args = [node_v]; progress.start()
 
-            # Ejecución de la tarea
             task = progress.add_task(f"Instalando {c['name']}...", total=None)
             success = run_bash_cmd(sid, args, progress)
             

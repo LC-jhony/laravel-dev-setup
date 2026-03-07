@@ -10,6 +10,7 @@ from rich.align import Align
 from rich.text import Text
 from rich.rule import Rule
 from rich.console import Group
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
 from rich.style import Style
 
 console = Console()
@@ -65,7 +66,6 @@ def get_menu_content():
             mark_style = "dim"
             
         # Selection Indicator & Line Background
-        # We use a subtle vertical bar and high contrast text for focus
         line = Text()
         
         if is_active:
@@ -74,7 +74,6 @@ def get_menu_content():
             line.append(mark, style=mark_style)
             line.append(f"{c['name']:<25}", style="bold white")
             line.append(f" {c['desc']}", style="dim")
-            # Wrap the line in a centered align later
         else:
             # Idle state
             line.append("    ", style="dim")
@@ -120,10 +119,11 @@ def draw_main_ui():
 #   Execution Logic
 # ─────────────────────────────────────────────────────────────
 
-def run_bash_cmd(cmd_label, script_name, extra_args=None):
+def run_bash_cmd(cmd_label, script_name, extra_args=None, progress=None, task_id=None):
     # Minimalist execution banner
-    console.print(f"\n  [bold cyan]INITIALIZING[/] [white]{cmd_label}[/]")
-    console.print(f"  [dim]──────────────────────────────────────────────────[/]")
+    if not progress:
+        console.print(f"\n  [bold cyan]INITIALIZING[/] [white]{cmd_label}[/]")
+        console.print(f"  [dim]──────────────────────────────────────────────────[/]")
     
     # Base command: load environment and installer
     cmd_parts = [
@@ -154,40 +154,47 @@ def run_bash_cmd(cmd_label, script_name, extra_args=None):
     env["LANG"] = "en_US.UTF-8"
     
     try:
-        # We use binary mode and decode manually to handle special characters correctly
         process = subprocess.Popen(
             ["bash", "-c", cmd],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             env=env, bufsize=0
         )
         
+        line_buffer = ""
         while True:
             char = process.stdout.read(1)
             if not char and process.poll() is not None:
                 break
             if char:
                 try:
-                    # Decode with 'replace' to avoid crashing on partial multi-byte sequences
                     decoded = char.decode('utf-8', errors='replace')
-                    # Prepend indentation for a clean UI look
+                    line_buffer += decoded
                     if decoded == '\n':
-                        sys.stdout.write('\n  [dim]│ [/]')
-                    else:
-                        sys.stdout.write(decoded)
-                    sys.stdout.flush()
+                        clean_line = line_buffer.replace('\n', '').replace('\r', '')
+                        if progress:
+                            progress.console.print(f"  [dim]│[/] {clean_line}")
+                        else:
+                            sys.stdout.write(f"  [dim]│ [/]{line_buffer}")
+                            sys.stdout.flush()
+                        line_buffer = ""
                 except:
                     pass
             
         process.wait()
         
         if process.returncode == 0:
-            console.print(f"\n  [bold green]SUCCESS[/] [dim]{cmd_label} configured.[/]")
+            if not progress:
+                console.print(f"\n  [bold green]SUCCESS[/] [dim]{cmd_label} configured.[/]")
         else:
-            console.print(f"\n  [bold red]FAILURE[/] [dim]Installation interrupted.[/]")
+            if not progress:
+                console.print(f"\n  [bold red]FAILURE[/] [dim]Installation interrupted.[/]")
             
         return process.returncode == 0
     except Exception as e:
-        console.print(f"\n  [bold red]ERROR[/] [dim]{e}[/]")
+        if progress:
+            progress.console.print(f"\n  [bold red]ERROR[/] [dim]{e}[/]")
+        else:
+            console.print(f"\n  [bold red]ERROR[/] [dim]{e}[/]")
         return False
 
 # ─────────────────────────────────────────────────────────────
@@ -254,27 +261,52 @@ def main():
         console.print("\n  [bold red]ABORTED[/] [dim]Authentication failed.[/]\n")
         sys.exit(1)
 
-    # Process Deployment
-    for c in selected:
-        args = None
-        if c["id"] == "php":
-            console.print("\n")
-            version = Prompt.ask("  [bold cyan]?[/] [white]Select PHP Engine[/]", choices=["8.4", "8.3", "8.2", "8.1"], default="8.4")
-            args = [version]
+    # Setup Progress Display
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(bar_width=40, style="dim", complete_style="cyan"),
+        TaskProgressColumn(),
+        TimeElapsedColumn(),
+        console=console,
+        expand=False
+    ) as progress:
         
-        if c["id"] == "node":
-            console.print("\n")
-            # We allow common LTS versions, numeric versions or 'lts'
-            version = Prompt.ask("  [bold cyan]?[/] [white]Select Node.js Version[/]", choices=["22", "20", "18", "lts", "node"], default="lts")
-            args = [version]
+        overall_task = progress.add_task("[bold white]Overall Deployment", total=len(selected))
         
-        if not run_bash_cmd(c["name"], c["id"], args):
-            sys.exit(1)
+        for c in selected:
+            args = None
+            if c["id"] == "php":
+                progress.stop() # Pause progress to ask
+                console.print("\n")
+                version = Prompt.ask("  [bold cyan]?[/] [white]Select PHP Engine[/]", choices=["8.4", "8.3", "8.2", "8.1"], default="8.4")
+                args = [version]
+                progress.start()
+            
+            if c["id"] == "node":
+                progress.stop()
+                console.print("\n")
+                version = Prompt.ask("  [bold cyan]?[/] [white]Select Node.js Version[/]", choices=["22", "20", "18", "lts", "node"], default="lts")
+                args = [version]
+                progress.start()
+
+            # Add a specific task for this component
+            comp_task = progress.add_task(f"[cyan]Installing {c['name']}...", total=None)
+            
+            success = run_bash_cmd(c["name"], c["id"], args, progress, comp_task)
+            
+            if success:
+                progress.update(comp_task, description=f"[green]✓ {c['name']} Complete", completed=100, total=100)
+                progress.advance(overall_task)
+            else:
+                progress.update(comp_task, description=f"[red]✗ {c['name']} Failed")
+                sys.exit(1)
 
     # Final Success Message
     console.print("\n\n" + "  [bold green]DEPLOYMENT COMPLETE[/]")
     console.print("  [dim]The environment has been optimized and is ready for use.[/]\n")
     console.print("  [dim]Please restart your terminal session.[/]\n")
+
 
 if __name__ == "__main__":
     main()

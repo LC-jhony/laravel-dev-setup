@@ -146,6 +146,9 @@ main() {
 
   # ── EXECUTION ───────────────────────────────────────────
   check_privileges
+  # Keep-alive sudo: updates the timestamp every 60 seconds
+  while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+  
   check_apt
 
   [[ "${STATES[shell]}"    == "1" ]] && install_shell

@@ -243,7 +243,9 @@ def main():
         
         progress.update(overall_task, description="[bold green]All systems ready")
 
-    console.print("\n\n" + Align.center(Text("✨ DEPLOYMENT SUCCESSFUL", style="bold green")))
+    # Final Success Message
+    console.print("\n\n")
+    console.print(Align.center(Text("✨ DEPLOYMENT SUCCESSFUL", style="bold green")))
     console.print(Align.center(Text("Environment is optimized. Please restart your terminal.", style="dim")))
     console.print("\n")
 

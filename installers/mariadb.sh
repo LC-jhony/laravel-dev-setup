@@ -11,7 +11,7 @@ install_mariadb() {
   echo ""
 
   run_step "Installing mariadb-server & mariadb-client" \
-    $SUDO apt-get install -y mariadb-server mariadb-client
+    bash -c "DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y mariadb-server mariadb-client"
 
   run_step "Enabling mariadb service on boot" \
     $SUDO systemctl enable mariadb

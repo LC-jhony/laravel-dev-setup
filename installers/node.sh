@@ -20,7 +20,7 @@ install_node() {
   # NVM installer requires curl or wget
   if ! command -v curl &>/dev/null; then
     run_step "Installing curl (required for NVM)" \
-      $SUDO apt-get install -y curl
+      bash -c "DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y curl"
   fi
 
   run_step "Downloading & installing NVM ${NVM_VERSION}" \

@@ -41,7 +41,7 @@ install_valet() {
   echo ""
 
   run_step "Installing system dependencies" \
-    $SUDO apt-get install -y "${VALET_DEPS[@]}"
+    bash -c "DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y ${VALET_DEPS[*]}"
 
   # ── Add Composer global bin to PATH if not already there ─
   _ensure_composer_bin_in_path

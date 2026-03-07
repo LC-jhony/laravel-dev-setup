@@ -1,183 +1,87 @@
 #!/bin/bash
 # ============================================================
-#   lib/shell.sh — Shell environment setup
-#
-#   Installs : git  unzip  zsh  fzf  zoxide
-#   Configures: ~/.zshrc con zinit + powerlevel10k + plugins
-#   Sets zsh as default shell for the current user
+#   installers/php.sh — PHP installation via ondrej/php
 # ============================================================
 
-ZSHRC_FILE="${HOME}/.zshrc"
-ZSHRC_BACKUP="${HOME}/.zshrc.bak.$(date +%Y%m%d_%H%M%S)"
+PHP_PACKAGES_DEFAULT=(
+  cli common curl xml zip gd mbstring intl
+  opcache readline bcmath soap igbinary msgpack
+  redis sqlite3 mysql pgsql
+)
 
 # ─────────────────────────────────────────────────────────────
-#   Main entry point
+#   Main entry point for PHP installation
 # ─────────────────────────────────────────────────────────────
-install_shell() {
+install_php() {
+  local version="$1"; shift
+  local packages=("$@")
 
-  # ── 1. System packages ───────────────────────────────────
-  section "Installing Shell Dependencies"
-  echo ""
-  msg_info "Packages: git  unzip  zsh  fzf  zoxide"
-  echo ""
-
-  run_step "Installing git unzip zsh fzf zoxide" \
-    $SUDO apt-get install -y git unzip zsh fzf zoxide
-
-  # ── 2. Write ~/.zshrc ────────────────────────────────────
-  section "Configuring ~/.zshrc"
+  section "Installing PHP ${version}"
   echo ""
 
-  if [[ -f "$ZSHRC_FILE" ]]; then
-    msg_warn "Existing ~/.zshrc found — backing up to ${ZSHRC_BACKUP}"
-    cp "$ZSHRC_FILE" "$ZSHRC_BACKUP"
-    msg_ok "Backup saved: ${ZSHRC_BACKUP}"
-    echo ""
-  fi
+  # Map selected package names to actual apt package names
+  local apt_packages=()
+  for pkg in "${packages[@]}"; do
+    if [[ "$pkg" == "base" ]]; then
+      apt_packages+=("php${version}")
+    else
+      apt_packages+=("php${version}-${pkg}")
+    fi
+  done
 
-  _write_zshrc
-  msg_ok "~/.zshrc written"
-
-  # ── 3. Pre-install zinit (clone now so first launch is fast)
-  section "Installing Zinit Plugin Manager"
+  msg_info "Packages: ${apt_packages[*]}"
   echo ""
 
-  local zinit_dir="${HOME}/.local/share/zinit/zinit.git"
-  if [[ -d "$zinit_dir" ]]; then
-    msg_info "Zinit already cloned at ${zinit_dir}"
-  else
-    run_step "Cloning zinit" \
-      git clone https://github.com/zdharma-continuum/zinit.git "$zinit_dir"
-  fi
-  msg_ok "Zinit ready — plugins will download on first zsh launch"
-
-  # ── 4. Set zsh as default shell ──────────────────────────
-  section "Setting Zsh as Default Shell"
-  echo ""
-
-  local zsh_path
-  zsh_path=$(command -v zsh)
-
-  # Ensure zsh is in /etc/shells
-  if ! grep -qx "$zsh_path" /etc/shells 2>/dev/null; then
-    run_step "Adding ${zsh_path} to /etc/shells" \
-      bash -c "echo '${zsh_path}' | $SUDO tee -a /etc/shells > /dev/null"
-  else
-    msg_ok "${zsh_path} already in /etc/shells"
-  fi
-
-  if [[ "$SHELL" == "$zsh_path" ]]; then
-    msg_ok "Zsh is already your default shell"
-  else
-    run_step "Changing default shell to zsh (chsh)" \
-      bash -c "chsh -s '${zsh_path}' '${USER}'"
-    msg_ok "Default shell set to ${zsh_path}"
-    msg_warn "Restart your terminal (or log out/in) to start using zsh"
-  fi
-
-  echo ""
-  msg_info "First launch: zinit will auto-install powerlevel10k and plugins"
-  msg_info "Run 'p10k configure' to customize your prompt"
+  # Ensure DEBIAN_FRONTEND is noninteractive to avoid hangs on prompts
+  run_step "Installing PHP ${version} and extensions" \
+    bash -c "DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y ${apt_packages[*]}"
 }
 
 # ─────────────────────────────────────────────────────────────
-#   Write the full ~/.zshrc
+#   PHP-FPM Installation
 # ─────────────────────────────────────────────────────────────
-_write_zshrc() {
-  cat > "$ZSHRC_FILE" << 'ZSHRC'
-# ============================================================
-#   ~/.zshrc — Zsh configuration
-#   Managed by: install.sh
-#   Reference : https://phoenixnap.com/kb/powerlevel10k
-# ============================================================
+install_fpm() {
+  local version="$1"
+  run_step "Installing php${version}-fpm" \
+    bash -c "DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y php${version}-fpm"
+}
 
-# Enable Powerlevel10k instant prompt.
-# Initialization code that may require console input (password
-# prompts, [y/n] confirmations, etc.) must go above this block.
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
+# ─────────────────────────────────────────────────────────────
+#   Web Server Integrations
+# ─────────────────────────────────────────────────────────────
 
-# macOS Homebrew (no-op on Linux)
-if [[ -f "/opt/homebrew/bin/brew" ]]; then
-  eval "$(/opt/homebrew/bin/brew shellenv)"
-fi
+integrate_apache() {
+  local version="$1"
+  section "Integrating with Apache"
+  run_step "Enabling proxy_fcgi and setenvif" \
+    $SUDO a2enmod proxy_fcgi setenvif
+  run_step "Enabling php${version}-fpm configuration" \
+    $SUDO a2enconf "php${version}-fpm"
+  run_step "Restarting Apache" \
+    $SUDO systemctl restart apache2
+}
 
-# ── Zinit ────────────────────────────────────────────────────
-ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
+integrate_nginx() {
+  local version="$1"
+  section "Integrating with Nginx"
+  msg_info "Nginx configuration snippet for PHP ${version}-fpm:"
+  echo ""
+  echo -e "    ${BRIGHT_WHITE}fastcgi_pass unix:/var/run/php/php${version}-fpm.sock;${RESET}"
+  echo ""
+}
 
-if [ ! -d "$ZINIT_HOME" ]; then
-  mkdir -p "$(dirname $ZINIT_HOME)"
-  git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
-fi
+# ─────────────────────────────────────────────────────────────
+#   Helpers
+# ─────────────────────────────────────────────────────────────
 
-source "${ZINIT_HOME}/zinit.zsh"
+set_default_php() {
+  local version="$1"
+  section "Setting PHP ${version} as default"
+  run_step "Updating alternatives: php" \
+    $SUDO update-alternatives --set php "/usr/bin/php${version}"
+}
 
-# ── Theme: Powerlevel10k ──────────────────────────────────────
-zinit ice depth=1; zinit light romkatv/powerlevel10k
-
-# ── Plugins ───────────────────────────────────────────────────
-zinit light zsh-users/zsh-syntax-highlighting
-zinit light zsh-users/zsh-completions
-zinit light zsh-users/zsh-autosuggestions
-zinit light Aloxaf/fzf-tab
-
-# ── OMZ Snippets ──────────────────────────────────────────────
-zinit snippet OMZL::git.zsh
-zinit snippet OMZP::git
-zinit snippet OMZP::sudo
-zinit snippet OMZP::laravel
-zinit snippet OMZP::command-not-found
-
-# ── Completions ───────────────────────────────────────────────
-autoload -Uz compinit && compinit
-zinit cdreplay -q
-
-# ── Powerlevel10k config ──────────────────────────────────────
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-
-# ── Keybindings ───────────────────────────────────────────────
-bindkey -e
-bindkey '^p' history-search-backward
-bindkey '^n' history-search-forward
-bindkey '^[w' kill-region
-
-# ── History ───────────────────────────────────────────────────
-HISTSIZE=5000
-HISTFILE=~/.zsh_history
-SAVEHIST=$HISTSIZE
-HISTDUP=erase
-setopt appendhistory
-setopt sharehistory
-setopt hist_ignore_space
-setopt hist_ignore_all_dups
-setopt hist_save_no_dups
-setopt hist_ignore_dups
-setopt hist_find_no_dups
-
-# ── Completion styling ────────────────────────────────────────
-zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
-zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
-zstyle ':completion:*' menu no
-zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls --color $realpath'
-zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview 'ls --color $realpath'
-
-# ── Zoxide (smarter cd) ───────────────────────────────────────
-if command -v zoxide &>/dev/null; then
-  eval "$(zoxide init zsh)"
-fi
-
-# ── NVM ───────────────────────────────────────────────────────
-export NVM_DIR="${HOME}/.nvm"
-[ -s "${NVM_DIR}/nvm.sh" ] && source "${NVM_DIR}/nvm.sh"
-[ -s "${NVM_DIR}/bash_completion" ] && source "${NVM_DIR}/bash_completion"
-
-# ── Composer global binaries ──────────────────────────────────
-export PATH="${HOME}/.config/composer/vendor/bin:${PATH}"
-
-# ── Aliases ───────────────────────────────────────────────────
-alias ls='ls --color'
-alias vim='nvim'
-alias c='clear'
-ZSHRC
+remove_old_php() {
+  local version="$1"
+  msg_warn "Existing PHP ${version} detected. Consider removing it later if not needed."
 }

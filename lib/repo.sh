@@ -18,10 +18,10 @@ _setup_repo_ubuntu() {
   echo ""
 
   run_step "Installing software-properties-common" \
-    $SUDO apt-get install -y software-properties-common
+    bash -c "DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y software-properties-common"
 
   run_step "Adding ondrej/php PPA" \
-    bash -c "LC_ALL=C.UTF-8 $SUDO add-apt-repository -y ppa:ondrej/php"
+    bash -c "LC_ALL=C.UTF-8 DEBIAN_FRONTEND=noninteractive $SUDO add-apt-repository -y ppa:ondrej/php"
 
   run_step "Updating package lists" \
     $SUDO apt-get update -qq
@@ -32,15 +32,15 @@ _setup_repo_debian() {
   echo ""
 
   run_step "Installing prerequisites" \
-    $SUDO apt-get install -y \
-      lsb-release ca-certificates curl apt-transport-https gnupg
+    bash -c "DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y \
+      lsb-release ca-certificates curl apt-transport-https gnupg"
 
   run_step "Downloading sury.org signing keyring" \
     bash -c "$SUDO curl -sSLo /tmp/debsuryorg-archive-keyring.deb \
       https://packages.sury.org/debsuryorg-archive-keyring.deb"
 
   run_step "Installing signing keyring" \
-    $SUDO dpkg -i /tmp/debsuryorg-archive-keyring.deb
+    bash -c "DEBIAN_FRONTEND=noninteractive $SUDO dpkg -i /tmp/debsuryorg-archive-keyring.deb"
 
   run_step "Adding sury.org source list" \
     bash -c "$SUDO sh -c 'echo \

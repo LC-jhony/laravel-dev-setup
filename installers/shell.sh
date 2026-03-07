@@ -22,7 +22,7 @@ install_shell() {
   echo ""
 
   run_step "Installing git unzip zsh fzf zoxide" \
-    $SUDO apt-get install -y git unzip zsh fzf zoxide
+    bash -c "DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y git unzip zsh fzf zoxide"
 
   # ── 2. Write ~/.zshrc ────────────────────────────────────
   section "Configuring ~/.zshrc"

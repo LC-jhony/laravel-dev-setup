@@ -23,10 +23,15 @@ echo -e "${DIM}--------------------------------------------------${RESET}"
 
 # 1. Pre-flight checks
 echo -ne "  ${CYAN}●${RESET} Checking prerequisites... "
-for cmd in git curl sudo; do
+for cmd in git curl sudo python3 pip3; do
     if ! command -v "$cmd" &>/dev/null; then
-        echo -e "\n  ${RED}✖ Error: '$cmd' is not installed.${RESET}"
-        exit 1
+        if [[ "$cmd" == "pip3" ]]; then
+            echo -ne "\n  ${YELLOW}●${RESET} Installing pip... "
+            sudo apt-get update &>/dev/null && sudo apt-get install -y python3-pip &>/dev/null
+        else
+            echo -e "\n  ${RED}✖ Error: '$cmd' is not installed.${RESET}"
+            exit 1
+        fi
     fi
 done
 echo -e "${GREEN}Done${RESET}"
@@ -37,7 +42,12 @@ if [ -d "$INSTALL_PATH" ]; then
     rm -rf "$INSTALL_PATH"
 fi
 
-# 3. Clone repository
+# 3. Install Rich
+echo -ne "  ${CYAN}●${RESET} Installing Rich UI library... "
+pip3 install rich --break-system-packages &>/dev/null || pip3 install rich &>/dev/null
+echo -e "${GREEN}Success${RESET}"
+
+# 4. Clone repository
 echo -ne "  ${CYAN}●${RESET} Downloading components from GitHub... "
 if git clone --depth 1 "$REPO_URL" "$INSTALL_PATH" &>/dev/null; then
     echo -e "${GREEN}Success${RESET}"
@@ -46,8 +56,8 @@ else
     exit 1
 fi
 
-# 4. Handover to main installer
+# 5. Handover to main installer
 echo -e "  ${CYAN}●${RESET} Launching interactive wizard..."
 echo ""
 cd "$INSTALL_PATH"
-bash install.sh
+python3 main.py

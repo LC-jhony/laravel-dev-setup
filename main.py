@@ -101,7 +101,6 @@ def interactive_select(title, options, multi=False, initial_states=None):
 # ─────────────────────────────────────────────────────────────
 
 def run_bash_cmd(cmd_label, script_name, extra_args=None, progress=None):
-    # Definimos el comando base
     cmd_parts = [
         "export SUDO=sudo",
         "source lib/ui.sh",
@@ -124,17 +123,22 @@ def run_bash_cmd(cmd_label, script_name, extra_args=None, progress=None):
     full_cmd = " && ".join(cmd_parts)
     
     try:
-        # IMPORTANTE: No capturamos stdout si queremos que sea totalmente interactivo (contraseñas, etc)
-        # Pero como queremos ver progreso, usamos una técnica híbrida:
+        # Pausamos el progreso para que la terminal sea 100% interactiva
         if progress:
-            progress.console.print(f"\n  [bold cyan]▶[/] [white]Deploying:[/] [bold white]{cmd_label}[/]")
-            # Ejecutamos permitiendo que sudo use el terminal para el prompt de contraseña
-            result = subprocess.run(["bash", "-c", full_cmd], check=False)
-            return result.returncode == 0
-        else:
-            result = subprocess.run(["bash", "-c", full_cmd], check=False)
-            return result.returncode == 0
+            progress.stop()
+            console.print(f"\n  [bold cyan]▶[/] [white]Deploying:[/] [bold white]{cmd_label}[/]")
+            console.print(f"  [dim]──────────────────────────────────────────────────[/]\n")
+        
+        # Ejecutamos con herencia de stdio para que formularios y sudo funcionen
+        result = subprocess.run(["bash", "-c", full_cmd], check=False)
+        
+        if progress:
+            console.print(f"\n  [dim]──────────────────────────────────────────────────[/]")
+            progress.start()
+            
+        return result.returncode == 0
     except Exception as e:
+        if progress: progress.start()
         console.print(f"\n  [bold red]ERROR[/] {e}")
         return False
 
@@ -147,7 +151,7 @@ def main():
     global states
     states = interactive_select("Components", COMPONENTS, multi=True, initial_states=states)
 
-    # 2. Configuración de PHP (Interactiva con flechas)
+    # 2. Configuración de PHP
     selected_versions = {}
     if states['php']:
         opts = [
@@ -189,7 +193,7 @@ def main():
         overall_task = progress.add_task("[bold white]Overall Deployment", total=len(selected_list))
         
         for c in selected_list:
-            # CASO ESPECIAL: Node.js pide versión MANUAL
+            # Caso Node.js pide versión manual antes de empezar su tarea
             args = []
             if c['id'] == 'node':
                 progress.stop()
@@ -202,7 +206,7 @@ def main():
             
             comp_task = progress.add_task(f"[cyan]Installing {c['name']}...", total=None)
             
-            # Ejecución (Sudo será interactivo si expira el tiempo)
+            # La función run_bash_cmd ahora detiene/inicia el progreso internamente
             success = run_bash_cmd(c['name'], c['id'], args, progress)
             
             if success:

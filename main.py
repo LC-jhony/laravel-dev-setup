@@ -18,25 +18,25 @@ from rich.progress import Progress, BarColumn, TextColumn, SpinnerColumn, TimeEl
 from rich.table import Table
 from rich import box
 
+# ─────────────────────────────────────────────────────────────
+#   Configuración Global
+# ─────────────────────────────────────────────────────────────
+
 console = Console()
 CACHED_PASSWORD = None
 KEEPALIVE_STARTED = False
 
-# ─────────────────────────────────────────────────────────────
-#   Config & System State
-# ─────────────────────────────────────────────────────────────
-
 COMPONENTS = [
     {"id": "shell",    "name": "Shell Environment", "desc": "Zsh + P10k + Modern CLI Tools", "bin": "zsh"},
-    {"id": "php",      "name": "PHP Engine",        "desc": "PHP 8.1 - 8.4 + Extensions", "bin": "php"},
-    {"id": "mariadb",  "name": "MariaDB Database",  "desc": "SQL Server + Security Wizard", "bin": "mariadb"},
-    {"id": "node",     "name": "Node.js (NVM)",     "desc": "Node LTS & Package Manager", "bin": "node"},
-    {"id": "composer", "name": "PHP Composer",      "desc": "Dependency Management", "bin": "composer"},
-    {"id": "valet",    "name": "Laravel Valet",     "desc": "Local Development Server", "bin": "valet"},
+    {"id": "php",      "name": "PHP Engine",        "desc": "🐘 Engine + Laravel Extensions", "bin": "php"},
+    {"id": "mariadb",  "name": "MariaDB Database",  "desc": "🗄️ SQL Server + Security", "bin": "mariadb"},
+    {"id": "node",     "name": "Node.js (NVM)",     "desc": "🟢 JS Runtime & Package Manager", "bin": "node"},
+    {"id": "composer", "name": "PHP Composer",      "desc": "📦 Global Dependencies", "bin": "composer"},
+    {"id": "valet",    "name": "Laravel Valet",     "desc": "⚡ Local Dev Server (.test)", "bin": "valet"},
 ]
 
 # ─────────────────────────────────────────────────────────────
-#   Core Logic
+#   Motor de Detección y Seguridad
 # ─────────────────────────────────────────────────────────────
 
 def detect_installed():
@@ -59,9 +59,13 @@ def detect_installed():
 
 def modern_modal_password():
     console.clear()
-    panel = Panel(Align.center(Group(Text("\nAcceso Administrativo Requerido", style="bold white"), Text("\nEl instalador necesita permisos de sudo para continuar.", style="dim"))), title="[bold yellow] 🔐 SECURITY ", border_style="bright_yellow", padding=(2, 4), box=box.DOUBLE)
-    console.print("\n" * (console.height // 4), Align.center(panel))
-    pwd = Prompt.ask(" [bold yellow]Contraseña[/]", password=True)
+    content = Group(
+        Text("\nAcceso Administrativo Requerido", style="bold white"),
+        Text("\nSe requieren permisos de sudo para este componente.", style="dim"),
+    )
+    panel = Panel(Align.center(content, vertical="middle"), title="[bold yellow] 🔐 SECURITY CHECK ", border_style="bright_yellow", padding=(2, 4), box=box.DOUBLE)
+    console.print("\n" * (max(0, console.height // 4)), Align.center(panel))
+    pwd = Prompt.ask(" [bold yellow]Contraseña de sistema[/]", password=True)
     proc = subprocess.Popen(["sudo", "-S", "-v"], stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     proc.communicate(input=f"{pwd}\n".encode())
     if proc.returncode == 0:
@@ -69,25 +73,52 @@ def modern_modal_password():
         if not KEEPALIVE_STARTED:
             KEEPALIVE_STARTED = True
             def keep_alive():
-                while True: subprocess.run(["sudo", "-n", "true"], check=False); time.sleep(60)
+                while True: subprocess.run(["sudo", "-n", "true"], check=False, stderr=subprocess.DEVNULL); time.sleep(60)
             threading.Thread(target=keep_alive, daemon=True).start()
-        console.clear(); return pwd
+        return pwd
     return modern_modal_password()
 
-def run_bash_cmd(script_name, extra_args=None, progress=None):
+# ─────────────────────────────────────────────────────────────
+#   UI Helpers (Modern & Minimalist)
+# ─────────────────────────────────────────────────────────────
+
+def get_header(title="LARAVEL DEV SETUP", sub="PREMIUM BOOTSTRAPPER"):
+    return Group(
+        Text("\n"),
+        Align.center(Text(title, style="bold cyan tracking5")),
+        Align.center(Text(sub, style="dim italic")),
+        Text("\n"),
+        Rule(style="dim #333333")
+    )
+
+def getch():
+    import tty, termios
+    fd = sys.stdin.fileno(); old = termios.tcgetattr(fd)
+    try: tty.setraw(fd); ch = sys.stdin.read(1)
+    finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    return ch
+
+# ─────────────────────────────────────────────────────────────
+#   Orquestador de Ejecución
+# ─────────────────────────────────────────────────────────────
+
+def run_bash_cmd(script_id, extra_args=None, progress=None):
     global CACHED_PASSWORD
-    cmd_parts = ["export SUDO=sudo", "source lib/ui.sh", "source lib/detect.sh", "source lib/repo.sh", f"source installers/{script_name}.sh", "detect_os"]
-    if script_name == "php":
+    cmd_parts = ["export SUDO=sudo", "source lib/ui.sh", "source lib/detect.sh", "source lib/repo.sh", f"source installers/{script_id}.sh", "detect_os"]
+    
+    if script_id == "php":
         v = extra_args[0] if extra_args else "8.4"
         cmd_parts += ["setup_repo", f"install_php {v}", f"set_default_php {v}"]
     else:
-        call = f"install_{script_name}"; 
+        call = f"install_{script_id}"
         if extra_args: call += f" {' '.join(extra_args)}"
         cmd_parts.append(call)
     
     full_cmd = " && ".join(cmd_parts)
     master_fd, slave_fd = pty.openpty()
-    env = os.environ.copy(); env["PYTHONIOENCODING"], env["LARAVEL_SETUP_RICH"] = "utf-8", "1"
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"], env["LARAVEL_SETUP_RICH"] = "utf-8", "1"
+    
     process = subprocess.Popen(["bash", "-c", full_cmd], stdin=slave_fd, stdout=slave_fd, stderr=slave_fd, close_fds=True, env=env)
     os.close(slave_fd); buffer = ""
     
@@ -109,7 +140,6 @@ def run_bash_cmd(script_name, extra_args=None, progress=None):
                         clean = line.strip()
                         if clean and "password for" not in clean.lower():
                             if progress: progress.console.print(f"  [dim]│[/] {clean}")
-                            else: console.print(f"  [dim]│[/] {clean}")
                     buffer = lines[-1]
             if process.poll() is not None and not r: break
         except: break
@@ -117,102 +147,99 @@ def run_bash_cmd(script_name, extra_args=None, progress=None):
     return process.returncode == 0
 
 # ─────────────────────────────────────────────────────────────
-#   Main Flow
+#   Flujo Principal (The App)
 # ─────────────────────────────────────────────────────────────
-
-def get_header(title="LARAVEL DEV SETUP", sub="PREMIUM ENVIRONMENT BOOTSTRAP"):
-    return Group(Text("\n"), Align.center(Text(title, style="bold cyan tracking5")), Align.center(Text(sub, style="dim italic")), Text("\n"), Rule(style="dim #333333"))
 
 def main():
     console.clear(); console.print(get_header())
-    with console.status(" [bold cyan]Escaneando sistema...[/]"):
+    with console.status(" [bold cyan]Iniciando escaneo...[/]"):
         installed_info = detect_installed()
-        time.sleep(0.6)
+        time.sleep(0.5)
 
-    # UI Minimalista de "Todo Instalado"
-    missing = [c for c in COMPONENTS if not installed_info[c['id']]]
-    if not missing:
-        table = Table(box=box.ROUNDED, border_style="green", title="[bold green]✅ ENTORNO OPTIMIZADO")
-        table.add_column("Componente", style="white"); table.add_column("Versión Detectada", style="bold cyan", justify="center")
-        for c in COMPONENTS: table.add_row(c['name'], f"v{installed_info[c['id']]}")
-        console.clear(); console.print(get_header()); console.print("\n", Align.center(table), "\n")
-        console.print(Align.center(Panel(Text("Tu sistema ya cuenta con todos los componentes necesarios.\n¿Deseas entrar al menú de configuración?", justify="center"), border_style="dim")))
-        console.print(Align.center(Text("\n[ [bold cyan]ENTER[/] ] Ir al Menú   [ [bold red]Q[/] ] Salir", style="dim")))
-        import tty, termios
-        def get_simple():
-            fd = sys.stdin.fileno(); old = termios.tcgetattr(fd)
-            try: tty.setraw(fd); return sys.stdin.read(1)
-            finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
-        if get_simple().lower() == 'q': sys.exit(0)
-
-    # Selección
-    import tty, termios
-    def getch():
-        fd = sys.stdin.fileno(); old = termios.tcgetattr(fd)
-        try: tty.setraw(fd); ch = sys.stdin.read(1); 
-        finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
-        return ch
-
+    # 1. Selección de Componentes (Checkbox UI)
     idx = 0; states = {c['id']: (not installed_info[c['id']]) for c in COMPONENTS}
     while True:
-        opts = []
+        console.clear(); console.print(get_header("MENU DE SELECCIÓN", "↑↓ Navegar · Espacio para marcar · Enter confirmar"))
         for i, c in enumerate(COMPONENTS):
-            mark = " ● " if states[c['id']] else " ○ "
-            style = "bold cyan" if i == idx else ("white" if states[c['id']] else "dim")
+            active = (i == idx)
+            mark = " [bold cyan]●[/] " if states[c['id']] else " [dim]○[/] "
+            name = Text(f"{c['name']:<25}", style="bold white" if active else ("white" if states[c['id']] else "dim"))
             tag = f" [green][v{installed_info[c['id']]}] [/]" if installed_info[c['id']] else ""
-            line = Text(); line.append("  ┃ " if i == idx else "    ", style="cyan")
-            line.append(mark, style="bold cyan" if states[c['id']] else "dim")
-            line.append(f"{c['name']:<25}", style=style); line.append(tag); opts.append(line)
-        console.clear(); console.print(get_header("COMPONENTS SELECTION", "↑↓ Navigate · Space toggle · Enter confirm"))
-        for o in opts: console.print(o)
+            console.print(Text("  ┃ " if active else "    ", style="cyan") + mark + name + tag + Text(f" {c['desc']}", style="dim italic"))
+        
         key = getch()
         if key == '\x1b':
-            rest = sys.stdin.read(2)
-            if rest == '[A': idx = (idx - 1) % len(COMPONENTS)
-            elif rest == '[B': idx = (idx + 1) % len(COMPONENTS)
+            r = sys.stdin.read(2)
+            if r == '[A': idx = (idx - 1) % len(COMPONENTS)
+            elif r == '[B': idx = (idx + 1) % len(COMPONENTS)
         elif key == ' ': states[COMPONENTS[idx]['id']] = not states[COMPONENTS[idx]['id']]
         elif key in ('\r', '\n'): break
         elif key.lower() == 'q': sys.exit(0)
 
-    selected_list = [c for c in COMPONENTS if states[c['id']]]
-    if not selected_list: return
+    selected_ids = [c['id'] for c in COMPONENTS if states[c['id']]]
+    if not selected_ids: return
 
-    sel_versions = {}
-    if states['php']:
-        v_opts = ["8.4", "8.3", "8.2", "8.1"]; v_idx = 0
-        while True:
-            console.clear(); console.print(get_header("PHP ENGINE", "Select version"))
-            for i, v in enumerate(v_opts):
-                style = "bold cyan" if i == v_idx else "white"
-                console.print(Text(f"  {'➜ ' if i == v_idx else '  '} PHP {v}", style=style))
-            k = getch()
-            if k == '\x1b':
-                r = sys.stdin.read(2)
-                if r == '[A': v_idx = (v_idx - 1) % len(v_opts)
-                elif r == '[B': v_idx = (v_idx + 1) % len(v_opts)
-            elif k in ('\r', '\n'): sel_versions['php'] = v_opts[v_idx]; break
-
-    # Instalación Minimalista
-    console.clear(); console.print(get_header("INSTALLATION PROGRESS", "Please wait while we configure your environment"))
-    with Progress(SpinnerColumn(), TextColumn("[bold cyan]{task.description}"), BarColumn(bar_width=40, style="dim", complete_style="cyan"), TextColumn("[bold white]{task.percentage:>3.0f}%"), TimeElapsedColumn(), console=console, transient=False) as progress:
-        overall = progress.add_task("Total Deployment", total=len(selected_list))
-        for c in selected_list:
+    # 2. Instalación en Vivo
+    console.clear(); console.print(get_header("DESPLIEGUE EN CURSO", "Configurando tu entorno de desarrollo"))
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold cyan]{task.description}"),
+        BarColumn(bar_width=40, style="dim", complete_style="cyan"),
+        TextColumn("[bold white]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+        console=console, transient=False
+    ) as progress:
+        
+        overall = progress.add_task("Progreso Total", total=len(selected_ids))
+        
+        for sid in selected_ids:
+            c = next(comp for comp in COMPONENTS if comp['id'] == sid)
             args = []
-            if c['id'] == 'node':
-                progress.stop(); console.print("\n"); node_v = Prompt.ask("  [bold cyan]?[/] [white]Enter Node.js version[/]", default="lts"); args = [node_v]; progress.start()
-            elif c['id'] == 'php': args = [sel_versions['php']]
             
-            task = progress.add_task(f"Installing {c['name']}...", total=None)
-            success = run_bash_cmd(c['id'], args, progress)
-            if success:
-                progress.update(task, description=f"[green]✓ {c['name']} Complete", completed=100, total=100); progress.advance(overall)
-            else:
-                progress.update(task, description=f"[red]✗ {c['name']} Failed"); sys.exit(1)
+            # PREGUNTAS JUST-IN-TIME (Justo antes de empezar la tarea)
+            if sid == 'php':
+                progress.stop(); console.clear(); console.print(get_header("PHP ENGINE", "Selecciona la versión a instalar"))
+                v_opts = ["8.4", "8.3", "8.2", "8.1"]; v_idx = 0
+                while True:
+                    for i, v in enumerate(v_opts):
+                        console.print(Text(f"  {' ➜ ' if i == v_idx else '   '} PHP {v} {'(Recomendado)' if v=='8.4' else ''}", style="bold cyan" if i == v_idx else "white"))
+                    k = getch()
+                    if k == '\x1b':
+                        r = sys.stdin.read(2)
+                        if r == '[A': v_idx = (v_idx - 1) % len(v_opts)
+                        elif r == '[B': v_idx = (v_idx + 1) % len(v_opts)
+                    elif k in ('\r', '\n'): args = [v_opts[v_idx]]; break
+                    console.clear(); console.print(get_header("PHP ENGINE", "Selecciona la versión a instalar"))
+                console.clear(); console.print(get_header("DESPLIEGUE EN CURSO")); progress.start()
+            
+            elif sid == 'node':
+                progress.stop(); console.print("\n")
+                node_v = Prompt.ask("  [bold cyan]?[/] [white]Ingresa versión de Node.js[/] [dim](ej: 22, lts, 20.10)[/]", default="lts")
+                args = [node_v]; progress.start()
 
-    # Final
-    console.clear(); panel = Panel(Align.center(Group(Text("\n✨ DEPLOYMENT SUCCESSFUL", style="bold green"), Text("\nYour system is now optimized for Laravel development.", style="dim"))), border_style="green", box=box.DOUBLE, padding=(1, 4))
+            # Ejecución de la tarea
+            task = progress.add_task(f"Instalando {c['name']}...", total=None)
+            success = run_bash_cmd(sid, args, progress)
+            
+            if success:
+                progress.update(task, description=f"[green]✓ {c['name']} Listo", completed=100, total=100)
+                progress.advance(overall)
+            else:
+                progress.update(task, description=f"[red]✗ {c['name']} Falló")
+                console.print(f"\n  [bold red]ERROR CRÍTICO[/] [dim]Fallo en {c['name']}. Revisa los logs arriba.[/]")
+                sys.exit(1)
+
+    # 3. Éxito Final
+    console.clear()
+    panel = Panel(Align.center(Group(
+        Text("\n✨ DESPLIEGUE COMPLETADO ✨", style="bold green"),
+        Text("\nTu entorno Laravel ha sido optimizado profesionalmente.", style="white"),
+        Text("\nReinicia tu terminal para activar todos los cambios.", style="dim italic")
+    )), border_style="green", box=box.DOUBLE, padding=(1, 4))
     console.print("\n" * (console.height // 4), Align.center(panel))
 
 if __name__ == "__main__":
     try: main()
-    except KeyboardInterrupt: console.print("\n\n [bold red]ABORTED[/]\n"); sys.exit(130)
+    except KeyboardInterrupt:
+        console.print("\n\n [bold red]INSTALACIÓN CANCELADA[/]\n"); sys.exit(130)

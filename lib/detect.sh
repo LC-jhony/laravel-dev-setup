@@ -9,27 +9,32 @@ detect_os() {
     # shellcheck source=/dev/null
     . /etc/os-release
     OS_ID="${ID}"
+    OS_VERSION="${VERSION_ID}"
     OS_CODENAME="${VERSION_CODENAME:-$(lsb_release -sc 2>/dev/null || echo unknown)}"
     OS_PRETTY="${PRETTY_NAME:-${NAME:-unknown}}"
   else
     OS_ID="unknown"
+    OS_VERSION="0.0"
     OS_CODENAME="unknown"
     OS_PRETTY="$(uname -sr)"
   fi
 
-  case "$OS_ID" in
-    ubuntu|linuxmint|pop|elementary|zorin|neon)
+  # Strict Ubuntu 24.04+ check
+  if [[ "$OS_ID" == "ubuntu" ]]; then
+    # Check if version is 24.04 or greater
+    # Using sort -V for version comparison
+    if [[ $(echo -e "24.04\n${OS_VERSION}" | sort -V | head -n1) == "24.04" ]]; then
       DISTRO_TYPE="ubuntu"
-      ;;
-    debian|raspbian|kali|devuan)
-      DISTRO_TYPE="debian"
-      ;;
-    *)
-      echo -e "\n   ${RED}${FAIL}  Unsupported distro: ${OS_ID}${RESET}"
-      echo -e "   ${INFO}  This installer supports Ubuntu and Debian (and derivatives)."
+    else
+      echo -e "\n   ${RED}${FAIL}  Unsupported Ubuntu version: ${OS_VERSION}${RESET}"
+      echo -e "   ${INFO}  This installer requires Ubuntu 24.04 or newer."
       exit 1
-      ;;
-  esac
+    fi
+  else
+    echo -e "\n   ${RED}${FAIL}  Unsupported distro: ${OS_ID}${RESET}"
+    echo -e "   ${INFO}  This installer EXCLUSIVELY supports Ubuntu 24.04+."
+    exit 1
+  fi
 }
 
 # Populates: EXISTING_PHP (empty if none)

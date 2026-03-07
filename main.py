@@ -8,6 +8,8 @@ import pty
 import select
 import shutil
 import signal
+import termios
+import tty
 from rich.console import Console, Group
 from rich.live import Live
 from rich.align import Align
@@ -122,46 +124,83 @@ def run_bash_cmd(script_id, extra_args=None, progress=None):
     env = os.environ.copy()
     env["PYTHONIOENCODING"], env["LARAVEL_SETUP_RICH"] = "utf-8", "1"
     
-    # Si no hay progreso, forzar modo interactivo para MariaDB y otros
-    if progress is None:
-        env["DEBIAN_FRONTEND"] = "interactive"
-    else:
-        env["DEBIAN_FRONTEND"] = "noninteractive"
+    is_interactive = (progress is None)
+    env["DEBIAN_FRONTEND"] = "interactive" if is_interactive else "noninteractive"
 
     process = subprocess.Popen(["bash", "-c", full_cmd], stdin=slave_fd, stdout=slave_fd, stderr=slave_fd, close_fds=True, env=env, preexec_fn=os.setsid)
     CURRENT_PROCESS = process
-    os.close(slave_fd); buffer = ""
+    os.close(slave_fd)
+    buffer = ""
     
-    while True:
+    old_settings = None
+    if is_interactive:
         try:
-            r, _, _ = select.select([master_fd], [], [], 0.1)
-            if master_fd in r:
-                data = os.read(master_fd, 1024)
-                if not data: break
-                chunk = data.decode('utf-8', errors='replace'); buffer += chunk
-                
-                # Inyección automática de contraseña
-                if "password for" in buffer.lower() and ":" in buffer:
-                    if progress: progress.stop()
-                    CACHED_PASSWORD = CACHED_PASSWORD or modern_modal_password()
-                    os.write(master_fd, (CACHED_PASSWORD + "\n").encode()); buffer = ""
-                    if progress: progress.start()
-                
-                elif "\n" in buffer:
-                    lines = buffer.split("\n")
-                    for line in lines[:-1]:
-                        clean = line.strip()
-                        if clean and "password for" not in clean.lower():
-                            if progress: progress.console.print(f"  [{theme['dim']}]│[/] {clean}")
-                            else: sys.stdout.write(line + "\n"); sys.stdout.flush()
-                    buffer = lines[-1]
-                
-                # Si estamos en modo interactivo puro (sin prefijo), volcamos el buffer restante
-                elif progress is None and buffer:
-                    sys.stdout.write(buffer); sys.stdout.flush(); buffer = ""
+            old_settings = termios.tcgetattr(sys.stdin)
+            tty.setcbreak(sys.stdin.fileno())
+        except: pass
 
-            if process.poll() is not None and not r: break
-        except: break
+    try:
+        while True:
+            inputs = [master_fd]
+            if is_interactive: inputs.append(sys.stdin)
+            
+            r, _, _ = select.select(inputs, [], [], 0.1)
+            
+            if master_fd in r:
+                try:
+                    data = os.read(master_fd, 1024)
+                except OSError: break
+                if not data: break
+                
+                chunk = data.decode('utf-8', errors='replace')
+                buffer += chunk
+                
+                # Inyección automática de contraseña (SUDO)
+                if "password for" in buffer.lower() and ":" in buffer:
+                    if not is_interactive: progress.stop()
+                    else: 
+                        if old_settings: termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+                    
+                    CACHED_PASSWORD = CACHED_PASSWORD or modern_modal_password()
+                    os.write(master_fd, (CACHED_PASSWORD + "\n").encode())
+                    buffer = ""
+                    
+                    if not is_interactive: progress.start()
+                    else:
+                        if old_settings: tty.setcbreak(sys.stdin.fileno())
+                
+                else:
+                    if is_interactive:
+                        # Modo interactivo: volcar todo al instante
+                        sys.stdout.write(buffer)
+                        sys.stdout.flush()
+                        buffer = ""
+                    else:
+                        # Modo progreso: procesar por líneas para la UI de Rich
+                        if "\n" in buffer:
+                            lines = buffer.split("\n")
+                            for line in lines[:-1]:
+                                clean = line.strip()
+                                if clean and "password for" not in clean.lower():
+                                    progress.console.print(f"  [{theme['dim']}]│[/] {clean}")
+                            buffer = lines[-1]
+
+            if is_interactive and sys.stdin in r:
+                try:
+                    input_data = os.read(sys.stdin.fileno(), 1024)
+                    if input_data:
+                        os.write(master_fd, input_data)
+                except EOFError: pass
+
+            if process.poll() is not None:
+                # Volcado final
+                if is_interactive and buffer:
+                    sys.stdout.write(buffer); sys.stdout.flush()
+                break
+    except Exception: break
+    finally:
+        if is_interactive and old_settings:
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
     
     process.wait()
     CURRENT_PROCESS = None

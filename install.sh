@@ -23,8 +23,18 @@ echo -e "${CYAN}${BOLD}🚀 LARAVEL DEV SETUP — Professional Bootstrap${RESET}
 echo -e "${DIM}--------------------------------------------------${RESET}"
 
 # 1. OS Compatibility Check
-if [[ "$OSTYPE" != "linux-gnu"* ]]; then
-    echo -e "  ${RED}●${RESET} Error: This installer only supports Linux (Ubuntu/Debian/WSL)."
+if [[ -f /etc/os-release ]]; then
+    . /etc/os-release
+    OS_ID="${ID}"
+    OS_VERSION="${VERSION_ID}"
+else
+    OS_ID="unknown"
+    OS_VERSION="0.0"
+fi
+
+if [[ "$OS_ID" != "ubuntu" ]] || [[ $(echo -e "24.04\n${OS_VERSION}" | sort -V | head -n1) != "24.04" ]]; then
+    echo -e "  ${RED}●${RESET} Error: This installer EXCLUSIVELY supports Ubuntu 24.04 or newer."
+    echo -e "    Current OS: ${OS_ID} ${OS_VERSION}"
     exit 1
 fi
 

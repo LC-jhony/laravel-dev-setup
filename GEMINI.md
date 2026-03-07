@@ -1,13 +1,13 @@
 # 🚀 Laravel Dev Setup — Instructional Context
 
-This project is a professional, modular automation tool designed to bootstrap a complete Laravel development environment on Linux distributions (specifically Ubuntu and Debian, including WSL2). It combines a high-fidelity Python-based UI with robust Bash-based installation logic.
+This project is a professional, modular automation tool designed to bootstrap a complete Laravel development environment EXCLUSIVELY on Ubuntu 24.04 and newer (including WSL2 based on Ubuntu 24.04).
 
 ## 🛠 Project Overview
 
 - **Orchestrator**: `main.py` serves as the primary entry point, providing an interactive CLI using the `rich` library. It handles component selection, system detection, and security (sudo) management.
-- **Bootstrapper**: `install.sh` is a shell-based installer that prepares the environment (Git, Python, Pip, Rich) and launches the Python orchestrator.
+- **Bootstrapper**: `install.sh` is a shell-based installer that prepares the environment (Git, Python, Pip, Rich) and launches the Python orchestrator. It performs an early OS check to ensure Ubuntu 24.04+.
 - **Modular Installers**: Located in `installers/`, these are independent shell scripts for specific components (PHP, MariaDB, Node.js, Composer, Valet).
-- **Core Library**: Located in `lib/`, these scripts provide shared functionality for UI styling (`ui.sh`), OS detection (`detect.sh`), and repository management (`repo.sh`).
+- **Core Library**: Located in `lib/`, these scripts provide shared functionality for UI styling (`ui.sh`), strict OS detection (`detect.sh`), and repository management (`repo.sh`).
 
 ### Main Technologies
 - **Python 3**: Core orchestration and UI logic.
@@ -18,7 +18,7 @@ This project is a professional, modular automation tool designed to bootstrap a 
 ## 🚀 Building and Running
 
 ### Prerequisites
-- Ubuntu 22.04+, Debian 11+, or WSL2.
+- Ubuntu 24.04+ or WSL2 (Ubuntu 24.04).
 - Sudo privileges.
 
 ### Key Commands

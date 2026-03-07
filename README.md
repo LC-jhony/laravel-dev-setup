@@ -1,6 +1,6 @@
 # 🚀 Laravel Dev Setup — Premium Installer
 
-Un ecosistema modular, interactivo y profesional diseñado para transformar una instalación limpia de **Ubuntu o WSL2** en una estación de trabajo Laravel de élite en minutos. Olvídate de configuraciones manuales; este asistente orquesta cada detalle con una interfaz visual de alta fidelidad.
+Un ecosistema modular, interactivo y profesional diseñado para transformar una instalación limpia de **Ubuntu 24.04+ o WSL2** en una estación de trabajo Laravel de élite en minutos. Olvídate de configuraciones manuales; este asistente orquesta cada detalle con una interfaz visual de alta fidelidad.
 
 ---
 
@@ -72,7 +72,7 @@ Gracias a nuestra gestión avanzada de descriptores de archivos, garantizamos qu
 
 ## 📋 Requisitos Mínimos
 
-*   **Sistema**: Ubuntu 22.04+ o WSL2 (Windows Subsystem for Linux).
+*   **Sistema**: **EXCLUSIVAMENTE Ubuntu 24.04+** o WSL2 (basado en Ubuntu 24.04).
 *   **Usuario**: Debe tener privilegios de `sudo`.
 *   **Internet**: Conexión activa para la descarga de paquetes oficiales.
 

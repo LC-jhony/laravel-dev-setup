@@ -26,19 +26,14 @@ from rich import box
 console = Console()
 CACHED_PASSWORD = None
 KEEPALIVE_STARTED = False
-CURRENT_PROCESS = None # Para rastrear y matar procesos activos
+CURRENT_PROCESS = None
 
 def graceful_exit(sig, frame):
-    """Manejador global para Ctrl+C."""
     global CURRENT_PROCESS
     if CURRENT_PROCESS:
-        try:
-            os.killpg(os.getpgid(CURRENT_PROCESS.pid), signal.SIGTERM)
-        except:
-            pass
-    
-    theme = get_theme()
-    console.print(f"\n\n [bold {theme['error']}]⚠ INSTALACIÓN INTERRUMPIDA POR EL USUARIO[/]\n")
+        try: os.killpg(os.getpgid(CURRENT_PROCESS.pid), signal.SIGTERM)
+        except: pass
+    console.print("\n\n [bold red]⚠ INSTALACIÓN INTERRUMPIDA[/]\n")
     sys.exit(130)
 
 signal.signal(signal.SIGINT, graceful_exit)
@@ -91,8 +86,7 @@ def detect_installed():
 def modern_modal_password():
     theme = get_theme()
     console.clear()
-    content = Group(Text("\nAcceso Administrativo Requerido", style=f"bold {theme['text']}"), Text("\nSe requieren permisos de sudo para este componente.", style=theme['dim']))
-    panel = Panel(Align.center(content, vertical="middle"), title=f"[bold yellow] 🔐 SECURITY CHECK ", border_style=theme['modal_border'], padding=(2, 4), box=box.DOUBLE)
+    panel = Panel(Align.center(Group(Text("\nAcceso Administrativo Requerido", style=f"bold {theme['text']}"), Text("\nSe requieren permisos de sudo para continuar.", style=theme['dim']))), title=f"[bold yellow] 🔐 SECURITY CHECK ", border_style=theme['modal_border'], padding=(2, 4), box=box.DOUBLE)
     console.print("\n" * (max(0, console.height // 4)), Align.center(panel))
     pwd = Prompt.ask(f" [bold {theme['primary']}]Contraseña de sistema[/]", password=True)
     proc = subprocess.Popen(["sudo", "-S", "-v"], stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -103,12 +97,12 @@ def modern_modal_password():
             KEEPALIVE_STARTED = True
             def keep_alive():
                 while True: subprocess.run(["sudo", "-n", "true"], check=False, stderr=subprocess.DEVNULL); time.sleep(60)
-            t = threading.Thread(target=keep_alive, daemon=True); t.start()
+            threading.Thread(target=keep_alive, daemon=True).start()
         return pwd
     return modern_modal_password()
 
 # ─────────────────────────────────────────────────────────────
-#   Orquestador
+#   Orquestador de Ejecución
 # ─────────────────────────────────────────────────────────────
 
 def run_bash_cmd(script_id, extra_args=None, progress=None):
@@ -124,10 +118,18 @@ def run_bash_cmd(script_id, extra_args=None, progress=None):
         cmd_parts.append(call)
     
     full_cmd = " && ".join(cmd_parts)
-    master_fd, slave_fd = pty.openpty()
-    env = os.environ.copy(); env["PYTHONIOENCODING"], env["LARAVEL_SETUP_RICH"] = "utf-8", "1"
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"], env["LARAVEL_SETUP_RICH"] = "utf-8", "1"
     
-    # Usamos setsid para crear un nuevo grupo de procesos y poder matarlos a todos si se cancela
+    # Si progress es None, significa que queremos interactividad total (ej. MariaDB)
+    if progress is None:
+        env["DEBIAN_FRONTEND"] = "interactive"
+        result = subprocess.run(["bash", "-c", full_cmd], env=env)
+        return result.returncode == 0
+
+    # Modo con prefijo │ y barra de progreso
+    env["DEBIAN_FRONTEND"] = "noninteractive"
+    master_fd, slave_fd = pty.openpty()
     process = subprocess.Popen(["bash", "-c", full_cmd], stdin=slave_fd, stdout=slave_fd, stderr=slave_fd, close_fds=True, env=env, preexec_fn=os.setsid)
     CURRENT_PROCESS = process
     os.close(slave_fd); buffer = ""
@@ -140,16 +142,16 @@ def run_bash_cmd(script_id, extra_args=None, progress=None):
                 if not data: break
                 chunk = data.decode('utf-8', errors='replace'); buffer += chunk
                 if "password for" in buffer.lower() and ":" in buffer:
-                    if progress: progress.stop()
+                    progress.stop()
                     CACHED_PASSWORD = CACHED_PASSWORD or modern_modal_password()
                     os.write(master_fd, (CACHED_PASSWORD + "\n").encode()); buffer = ""
-                    if progress: progress.start()
+                    progress.start()
                 elif "\n" in buffer:
                     lines = buffer.split("\n")
                     for line in lines[:-1]:
                         clean = line.strip()
                         if clean and "password for" not in clean.lower():
-                            if progress: progress.console.print(f"  [{theme['dim']}]│[/] {clean}")
+                            progress.console.print(f"  [{theme['dim']}]│[/] {clean}")
                     buffer = lines[-1]
             if process.poll() is not None and not r: break
         except: break
@@ -159,7 +161,7 @@ def run_bash_cmd(script_id, extra_args=None, progress=None):
     return process.returncode == 0
 
 # ─────────────────────────────────────────────────────────────
-#   Main Flow
+#   Flujo Principal
 # ─────────────────────────────────────────────────────────────
 
 def get_header(title="LARAVEL DEV SETUP", sub="PREMIUM BOOTSTRAPPER"):
@@ -179,6 +181,18 @@ def main():
     console.clear(); console.print(get_header())
     with console.status(" [bold]Escaneando sistema...[/]"): installed_info = detect_installed(); time.sleep(0.5)
 
+    # UI de Entorno Optimizado
+    missing = [c for c in COMPONENTS if not installed_info[c['id']]]
+    if not missing:
+        table = Table(box=box.ROUNDED, border_style="green", title="[bold green]✅ ENTORNO OPTIMIZADO")
+        table.add_column("Componente", style="white"); table.add_column("Versión", style="bold cyan", justify="center")
+        for c in COMPONENTS: table.add_row(c['name'], f"v{installed_info[c['id']]}")
+        console.clear(); console.print(get_header()); console.print("\n", Align.center(table), "\n")
+        console.print(Align.center(Panel(Text("Tu sistema ya está completamente configurado.\n¿Deseas entrar al menú de todos modos?", justify="center"), border_style="dim")))
+        console.print(Align.center(Text("\n[ [bold cyan]ENTER[/] ] Menú   [ [bold red]Q[/] ] Salir", style="dim")))
+        if getch().lower() == 'q': sys.exit(0)
+
+    # Selección
     idx = 0; states = {c['id']: (not installed_info[c['id']]) for c in COMPONENTS}
     while True:
         theme = get_theme()
@@ -204,7 +218,7 @@ def main():
     selected_ids = [c['id'] for c in COMPONENTS if states[c['id']]]
     if not selected_ids: return
 
-    theme = get_theme(); selected_php = "8.4"
+    selected_php = "8.4"
     if states['php']:
         v_opts = ["8.4", "8.3", "8.2", "8.1"]; v_idx = 0
         while True:
@@ -224,15 +238,24 @@ def main():
         overall = progress.add_task("Total", total=len(selected_ids))
         for sid in selected_ids:
             c = next(comp for comp in COMPONENTS if comp['id'] == sid); args = [selected_php] if sid == 'php' else []
-            if sid == 'node':
-                progress.stop(); console.print("\n"); node_v = Prompt.ask(f"  [bold {theme['primary']}]?[/] [white]Versión de Node.js[/]", default="lts"); args = [node_v]; progress.start()
-            task = progress.add_task(f"Instalando {c['name']}...", total=None)
-            if run_bash_cmd(sid, args, progress):
-                progress.update(task, description=f"[{theme['success']}]✓ {c['name']} Listo", completed=100, total=100); progress.advance(overall)
+            
+            # EXCEPCIÓN DE INTERACTIVIDAD PARA MARIADB
+            if sid == 'mariadb':
+                progress.stop()
+                console.print(f"\n  [bold {theme['primary']}]▶[/] [white]Iniciando configuración de MariaDB (Interactiva)...[/]")
+                if run_bash_cmd(sid, args, None): # None = modo interactivo total
+                    progress.advance(overall); progress.start()
+                else: sys.exit(1)
             else:
-                progress.update(task, description=f"[{theme['error']}]✗ {c['name']} Falló"); sys.exit(1)
+                if sid == 'node':
+                    progress.stop(); console.print("\n"); node_v = Prompt.ask(f"  [bold {theme['primary']}]?[/] [white]Versión de Node.js[/]", default="lts"); args = [node_v]; progress.start()
+                task = progress.add_task(f"Instalando {c['name']}...", total=None)
+                if run_bash_cmd(sid, args, progress):
+                    progress.update(task, description=f"[{theme['success']}]✓ {c['name']} Listo", completed=100, total=100); progress.advance(overall)
+                else:
+                    progress.update(task, description=f"[{theme['error']}]✗ {c['name']} Falló"); sys.exit(1)
 
-    theme = get_theme(); console.clear(); panel = Panel(Align.center(Group(Text("\n✨ DESPLIEGUE COMPLETADO ✨", style=f"bold {theme['success']}"), Text("\nTu entorno Laravel ha sido optimizado profesionalmente.", style=theme['text']))), border_style=theme['success'], box=box.DOUBLE, padding=(1, 4))
+    console.clear(); panel = Panel(Align.center(Group(Text("\n✨ DESPLIEGUE COMPLETADO ✨", style=f"bold {theme['success']}"), Text("\nTu entorno Laravel ha sido optimizado profesionalmente.", style=theme['text']))), border_style=theme['success'], box=box.DOUBLE, padding=(1, 4))
     console.print("\n" * (console.height // 4), Align.center(panel))
 
 if __name__ == "__main__":

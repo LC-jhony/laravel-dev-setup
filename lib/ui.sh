@@ -74,7 +74,7 @@ msg_info() { echo -e "   ${CYAN}${BOLD}${INFO}${RESET}  ${DIM}${1}${RESET}"; }
 msg_warn() { echo -e "   ${YELLOW}${BOLD}${WARN}${RESET}  ${YELLOW}${1}${RESET}"; }
 
 # ─────────────────────────────────────────────────────────────
-#   Interactive Prompts
+#   Interactive Prompts (Fix for /dev/tty)
 # ─────────────────────────────────────────────────────────────
 
 prompt_confirm() {
@@ -83,7 +83,8 @@ prompt_confirm() {
   [[ "$def" == "n" ]] && hint="[y/N]"
   echo ""
   echo -ne "   ${BOLD}${WHITE}${q}${RESET} ${DIM}${hint}${RESET} ${CYAN}${ARROW}${RESET} "
-  read -r ans
+  # Read from /dev/tty to support curl | bash
+  read -r ans < /dev/tty
   ans="${ans:-$def}"
   [[ "${ans,,}" == "y" ]]
 }
@@ -99,7 +100,8 @@ show_menu() {
   done
   echo ""
   echo -ne "   ${BOLD}${WHITE}Choice [1-${count}]${RESET} ${CYAN}${ARROW}${RESET} "
-  read -r choice
+  # Read from /dev/tty to support curl | bash
+  read -r choice < /dev/tty
   _MENU_CHOICE="${choice:-1}"
   return 0
 }

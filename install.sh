@@ -48,7 +48,7 @@ dashboard_selection() {
     _draw_panel_line "${_st[valet]}"    "6" "Laravel Valet"     "Elite Local Development Server"
     echo ""
     echo -ne "   ${BOLD}${WHITE}Choice${RESET} ${CYAN}${ARROW}${RESET} "
-    read -r key
+    read -r key < /dev/tty
 
     case "${key,,}" in
       1) [[ "${_st[shell]}"    == "1" ]] && _st[shell]="0"    || _st[shell]="1" ;;

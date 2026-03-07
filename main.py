@@ -7,24 +7,26 @@ import threading
 import pty
 import select
 import shutil
-from rich.console import Console
+from collections import deque
+from rich.console import Console, Group
 from rich.live import Live
 from rich.align import Align
 from rich.text import Text
 from rich.rule import Rule
-from rich.console import Group
 from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.progress import Progress, BarColumn, TextColumn, SpinnerColumn, TimeElapsedColumn
+from rich.table import Table
+from rich.layout import Layout
 from rich import box
+
+# ─────────────────────────────────────────────────────────────
+#   Config & System State
+# ─────────────────────────────────────────────────────────────
 
 console = Console()
 CACHED_PASSWORD = None
 KEEPALIVE_STARTED = False
-
-# ─────────────────────────────────────────────────────────────
-#   Config & State
-# ─────────────────────────────────────────────────────────────
 
 COMPONENTS = [
     {"id": "shell",    "name": "Shell Environment", "desc": "Zsh + P10k + Modern CLI Tools", "bin": "zsh"},
@@ -35,172 +37,119 @@ COMPONENTS = [
     {"id": "valet",    "name": "Laravel Valet",     "desc": "Local Development Server", "bin": "valet"},
 ]
 
-states = {}
-installed_info = {}
+# Global variables for installation tracking
+installation_states = {} # {id: 'pending' | 'installing' | 'success' | 'failed'}
+installation_logs = deque(maxlen=8) # Store last 8 lines of log
+current_component_id = None
 
 # ─────────────────────────────────────────────────────────────
-#   Detection System
+#   UI Components (Rich Enchanced)
+# ─────────────────────────────────────────────────────────────
+
+def get_header(title="LARAVEL DEV SETUP", sub="PREMIUM ENVIRONMENT BOOTSTRAP"):
+    grid = Table.grid(expand=True)
+    grid.add_column(justify="center")
+    grid.add_row(Text(f"\n{title}", style="bold cyan tracking5"))
+    grid.add_row(Text(sub, style="dim italic"))
+    return Panel(grid, style="dim #333333", box=box.MINIMAL)
+
+def get_status_table():
+    table = Table(box=box.SIMPLE, expand=True, border_style="dim")
+    table.add_column("Component", style="white")
+    table.add_column("Status", justify="right")
+    
+    for c in COMPONENTS:
+        state = installation_states.get(c['id'], 'skip')
+        if state == 'pending':
+            status = Text("⌛ Pendiente", style="dim")
+        elif state == 'installing':
+            status = Text("🛠️ Instalando", style="bold yellow")
+        elif state == 'success':
+            status = Text("✅ Completado", style="bold green")
+        elif state == 'failed':
+            status = Text("❌ Fallido", style="bold red")
+        else:
+            continue
+        table.add_row(c['name'], status)
+    return Panel(table, title="[bold]📋 Deployment Stack", border_style="cyan")
+
+def get_log_panel():
+    log_text = Text()
+    for line in installation_logs:
+        log_text.append(f"  > {line}\n", style="dim")
+    return Panel(log_text, title="[bold]📜 Live Output", border_style="dim", padding=(1, 1), subtitle="[italic]Escuchando terminal...")
+
+def create_install_layout(progress_renderable):
+    layout = Layout()
+    layout.split_column(
+        Layout(get_header(), size=5),
+        Layout(name="main", ratio=1),
+        Layout(progress_renderable, size=3)
+    )
+    layout["main"].split_row(
+        Layout(get_status_table(), ratio=1),
+        Layout(get_log_panel(), ratio=2)
+    )
+    return layout
+
+# ─────────────────────────────────────────────────────────────
+#   Core Logic (Security & Detection)
 # ─────────────────────────────────────────────────────────────
 
 def detect_installed():
-    global installed_info, states
+    global installed_info, installation_states
+    info = {}
     for c in COMPONENTS:
-        version = None
-        is_installed = False
-        bin_path = shutil.which(c['bin'])
-        if bin_path:
+        is_installed = False; ver = None
+        if shutil.which(c['bin']):
             is_installed = True
             try:
                 if c['id'] == 'php': cmd = "php -r 'echo PHP_MAJOR_VERSION.\".\".PHP_MINOR_VERSION;'"
                 elif c['id'] == 'node': cmd = "node -v"
                 elif c['id'] == 'composer': cmd = "composer --version | awk '{print $3}'"
-                elif c['id'] == 'mariadb': cmd = "mariadb --version | awk '{print $5}' | cut -d',' -f1"
                 else: cmd = f"{c['bin']} --version"
-                version_raw = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode().strip()
-                version = version_raw.lstrip('v').split()[0]
-            except: version = "Detectado"
-        if c['id'] == 'node' and not is_installed:
-             if os.path.exists(os.path.expanduser("~/.nvm")): is_installed = True; version = "NVM"
-        installed_info[c['id']] = version if is_installed else None
-        states[c['id']] = not is_installed
-
-# ─────────────────────────────────────────────────────────────
-#   Security Helpers
-# ─────────────────────────────────────────────────────────────
-
-def start_keep_alive():
-    """Mantiene activa la sesión de sudo en segundo plano."""
-    global KEEPALIVE_STARTED
-    if KEEPALIVE_STARTED: return
-    KEEPALIVE_STARTED = True
-    def keep_alive():
-        while True:
-            subprocess.run(["sudo", "-n", "true"], check=False, stderr=subprocess.DEVNULL)
-            time.sleep(60)
-    threading.Thread(target=keep_alive, daemon=True).start()
+                ver = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode().strip().lstrip('v').split()[0]
+            except: ver = "Detectado"
+        if c['id'] == 'node' and not is_installed and os.path.exists(os.path.expanduser("~/.nvm")):
+            is_installed = True; ver = "NVM"
+        info[c['id']] = ver if is_installed else None
+    return info
 
 def modern_modal_password():
-    """Muestra un modal centrado y estilizado para la contraseña."""
-    # Guardamos la pantalla actual
     console.clear()
-    
-    content = Group(
-        Text("\nAcceso Administrativo Requerido", style="bold white"),
-        Text("\nEl instalador necesita permisos para aplicar cambios en el sistema.", style="dim"),
-        Text("\nTu contraseña será usada solo en esta sesión y no se guardará en disco.", style="italic cyan small"),
+    panel = Panel(
+        Align.center(Group(
+            Text("\nAcceso Administrativo Requerido", style="bold white"),
+            Text("\nEl instalador necesita permisos de sudo para continuar.", style="dim")
+        )),
+        title="[bold yellow] 🔐 SECURITY ", border_style="yellow", padding=(2, 4), box=box.DOUBLE
     )
-    
-    modal_panel = Panel(
-        Align.center(content, vertical="middle"),
-        title="[bold yellow] 🔐 SEGURIDAD DEL SISTEMA ",
-        border_style="bright_yellow",
-        padding=(2, 4),
-        box=box.DOUBLE
-    )
-    
-    # Imprimimos espacios para centrar verticalmente (aproximado)
-    console.print("\n" * (console.height // 4))
-    console.print(Align.center(modal_panel))
-    console.print("\n")
-    
-    pwd = Prompt.ask(" [bold yellow]Contraseña de sudo[/]", password=True)
-    
-    # Validar inmediatamente
+    console.print("\n" * (console.height // 4), Align.center(panel))
+    pwd = Prompt.ask(" [bold yellow]Contraseña[/]", password=True)
     proc = subprocess.Popen(["sudo", "-S", "-v"], stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     proc.communicate(input=f"{pwd}\n".encode())
-    
     if proc.returncode == 0:
-        start_keep_alive()
-        console.clear() # Limpiar modal para volver a la instalación
-        return pwd
-    else:
-        console.print(Align.center(Text("✖ Contraseña incorrecta. Reintentando...", style="bold red")))
-        time.sleep(1.5)
-        return modern_modal_password()
+        if not KEEPALIVE_STARTED:
+            threading.Thread(target=lambda: (time.sleep(60), subprocess.run(["sudo", "-n", "true"], check=False)), daemon=True).start()
+        console.clear(); return pwd
+    return modern_modal_password()
 
 # ─────────────────────────────────────────────────────────────
-#   UI Helpers
+#   Execution Engine (PTY)
 # ─────────────────────────────────────────────────────────────
 
-def get_header(title_str="LARAVEL DEV SETUP", subtitle_str="PREMIUM ENVIRONMENT BOOTSTRAP"):
-    return Group(
-        Text("\n"),
-        Align.center(Text(title_str, style="bold cyan tracking5")),
-        Align.center(Text(subtitle_str, style="dim italic")),
-        Text("\n"),
-        Rule(style="dim #333333")
-    )
-
-def interactive_select(title, options, multi=False, initial_states=None):
-    idx = 0
-    selected_states = initial_states.copy() if initial_states else {opt['id']: False for opt in options}
-    import tty, termios
-    def getch():
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
-        try:
-            tty.setraw(sys.stdin.fileno())
-            ch = sys.stdin.read(1)
-            if ch == '\x1b': ch += sys.stdin.read(2)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return ch
-
-    def render():
-        items = [Text("\n")]
-        for i, opt in enumerate(options):
-            is_active = (i == idx)
-            is_sel = selected_states[opt['id']] if multi else (i == idx)
-            mark = " ● " if (multi and is_sel) or (not multi and is_active) else " ○ "
-            mark_style = "bold cyan" if (multi and is_sel) or (not multi and is_active) else "dim"
-            status_tag = f" [bold green][INSTALADO: v{installed_info[opt['id']]}] [/]" if multi and installed_info.get(opt['id']) else ""
-            line = Text()
-            line.append("  ┃ " if is_active else "    ", style="bold cyan")
-            line.append(mark, style=mark_style)
-            line.append(f"{opt['name']:<25}", style="bold white" if is_active else "dim")
-            line.append(status_tag)
-            if 'desc' in opt: line.append(f" {opt['desc']}", style="dim italic")
-            items.append(line); items.append(Text("\n"))
-        footer = Text()
-        shortcuts = [("↑↓", "Nav"), ("SPACE", "Toggle") if multi else ("ENTER", "Select"), ("Q", "Quit")]
-        for k, a in shortcuts: footer.append(f" {k} ", style="bold cyan"); footer.append(f"{a}   ", style="dim")
-        return Group(get_header(title.upper(), "INTERACTIVE SELECTION"), Align.center(Group(*items)), Rule(style="dim #333333"), Align.center(footer), Text("\n"))
-
-    with Live(render(), auto_refresh=False, screen=True) as live:
-        while True:
-            key = getch()
-            if key in ('\x1b[A', 'k'): idx = (idx - 1) % len(options)
-            elif key in ('\x1b[B', 'j'): idx = (idx + 1) % len(options)
-            elif key == ' ' and multi:
-                cid = options[idx]['id']
-                selected_states[cid] = not selected_states[cid]
-            elif key in ('\r', '\n'): return selected_states if multi else options[idx]['id']
-            elif key.lower() == 'q': sys.exit(0)
-            live.update(render(), refresh=True)
-
-# ─────────────────────────────────────────────────────────────
-#   Execution Engine
-# ─────────────────────────────────────────────────────────────
-
-def run_bash_cmd(cmd_label, script_name, extra_args=None, progress=None):
-    global CACHED_PASSWORD
+def run_bash_cmd(script_name, extra_args=None):
+    global CACHED_PASSWORD, installation_logs
     cmd_parts = ["export SUDO=sudo", "source lib/ui.sh", "source lib/detect.sh", "source lib/repo.sh", f"source installers/{script_name}.sh", "detect_os"]
     if script_name == "php":
-        version = extra_args[0] if extra_args else "8.4"
-        cmd_parts += ["setup_repo", f"install_php {version}", f"set_default_php {version}"]
+        v = extra_args[0] if extra_args else "8.4"
+        cmd_parts += ["setup_repo", f"install_php {v}", f"set_default_php {v}"]
     else:
-        call_cmd = f"install_{script_name}"
-        if extra_args: call_cmd += f" {' '.join(extra_args)}"
-        cmd_parts.append(call_cmd)
+        call = f"install_{script_name}"
+        if extra_args: call += f" {' '.join(extra_args)}"
+        cmd_parts.append(call)
     
     full_cmd = " && ".join(cmd_parts)
-    
-    if progress:
-        progress.stop()
-        console.print(f"\n  [bold cyan]▶[/] [white]Deploying:[/] [bold white]{cmd_label}[/]")
-        console.print(f"  [dim]──────────────────────────────────────────────────[/]\n")
-        progress.start()
-
     master_fd, slave_fd = pty.openpty()
     env = os.environ.copy()
     env["PYTHONIOENCODING"], env["LARAVEL_SETUP_RICH"] = "utf-8", "1"
@@ -218,18 +167,15 @@ def run_bash_cmd(cmd_label, script_name, extra_args=None, progress=None):
                 chunk = data.decode('utf-8', errors='replace')
                 buffer += chunk
                 if "password for" in buffer.lower() and ":" in buffer:
-                    if progress: progress.stop()
                     CACHED_PASSWORD = CACHED_PASSWORD or modern_modal_password()
                     os.write(master_fd, (CACHED_PASSWORD + "\n").encode())
                     buffer = ""
-                    if progress: progress.start()
                 elif "\n" in buffer:
                     lines = buffer.split("\n")
                     for line in lines[:-1]:
-                        clean_line = line.strip()
-                        if clean_line and "password for" not in clean_line.lower():
-                             if progress: progress.console.print(f"  [dim]│[/] {clean_line}")
-                             else: console.print(f"  [dim]│[/] {clean_line}")
+                        clean = line.strip()
+                        if clean and "password for" not in clean.lower():
+                            installation_logs.append(clean)
                     buffer = lines[-1]
             if process.poll() is not None and not r: break
         except: break
@@ -237,45 +183,98 @@ def run_bash_cmd(cmd_label, script_name, extra_args=None, progress=None):
     return process.returncode == 0
 
 # ─────────────────────────────────────────────────────────────
-#   Main Entry Point
+#   Main Interactive Flow
 # ─────────────────────────────────────────────────────────────
 
 def main():
-    global states
+    global installation_states, current_component_id
     console.clear()
     console.print(get_header())
-    with console.status(" [bold cyan]Escaneando componentes...[/]"): detect_installed(); time.sleep(0.5)
+    
+    with console.status(" [bold cyan]Iniciando sistema...[/]"):
+        installed_info = detect_installed()
+        time.sleep(0.5)
 
-    states = interactive_select("Components", COMPONENTS, multi=True, initial_states=states)
-    selected_versions = {}
-    if states['php']:
-        opts = [{"id": v, "name": f"PHP {v}"} for v in ["8.4", "8.3", "8.2", "8.1", "8.5"]]
-        selected_versions['php'] = interactive_select("PHP Engine", opts)
+    # 1. Selección Interactiva
+    import tty, termios
+    def getch():
+        fd = sys.stdin.fileno(); old = termios.tcgetattr(fd)
+        try: tty.setraw(fd); ch = sys.stdin.read(1); 
+        finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
+        return ch
+
+    idx = 0; states = {c['id']: (not installed_info[c['id']]) for c in COMPONENTS}
+    while True:
+        opts = []
+        for i, c in enumerate(COMPONENTS):
+            mark = " ● " if states[c['id']] else " ○ "
+            style = "bold cyan" if i == idx else ("white" if states[c['id']] else "dim")
+            tag = f" [green][INSTALADO: v{installed_info[c['id']]}] [/]" if installed_info[c['id']] else ""
+            line = Text(); line.append("  ┃ " if i == idx else "    ", style="cyan")
+            line.append(mark, style="bold cyan" if states[c['id']] else "dim")
+            line.append(f"{c['name']:<25}", style=style); line.append(tag)
+            opts.append(line)
+        
+        console.clear(); console.print(get_header("COMPONENTS SELECTION", "Use ↑↓ to navigate · Space to toggle · Enter to confirm"))
+        for o in opts: console.print(o)
+        key = getch()
+        if key == '\x1b': 
+            rest = sys.stdin.read(2)
+            if rest == '[A': idx = (idx - 1) % len(COMPONENTS)
+            elif rest == '[B': idx = (idx + 1) % len(COMPONENTS)
+        elif key == ' ': states[COMPONENTS[idx]['id']] = not states[COMPONENTS[idx]['id']]
+        elif key in ('\r', '\n'): break
+        elif key.lower() == 'q': sys.exit(0)
 
     selected_list = [c for c in COMPONENTS if states[c['id']]]
     if not selected_list: return
 
-    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), BarColumn(bar_width=40, style="dim", complete_style="cyan"), TextColumn("[bold white]{task.percentage:>3.0f}%"), TimeElapsedColumn(), console=console, transient=False) as progress:
-        overall_task = progress.add_task("[bold white]Overall Deployment", total=len(selected_list))
-        for c in selected_list:
-            args = []
-            if c['id'] == 'node':
-                progress.stop(); node_ver = Prompt.ask("\n  [bold cyan]?[/] [white]Enter Node.js version[/]", default="lts"); args = [node_ver]; progress.start()
-            elif c['id'] == 'php': args = [selected_versions['php']]
-            
-            comp_task = progress.add_task(f"[cyan]Installing {c['name']}...", total=None)
-            if run_bash_cmd(c['name'], c['id'], args, progress):
-                progress.update(comp_task, description=f"[green]✓ {c['name']} Complete", completed=100, total=100); progress.advance(overall_task)
-            else:
-                progress.update(comp_task, description=f"[red]✗ {c['name']} Failed"); sys.exit(1)
-        progress.update(overall_task, description="[bold green]All systems ready")
+    # 2. Versiones
+    sel_versions = {}
+    if states['php']:
+        v_opts = ["8.4", "8.3", "8.2", "8.1", "8.5"]
+        v_idx = 0
+        while True:
+            console.clear(); console.print(get_header("PHP ENGINE", "Select stable or experimental version"))
+            for i, v in enumerate(v_opts):
+                style = "bold cyan" if i == v_idx else "white"
+                console.print(Text(f"  {'➜ ' if i == v_idx else '  '} PHP {v} {'(Recommended)' if v=='8.4' else ''}", style=style))
+            k = getch()
+            if k == '\x1b':
+                r = sys.stdin.read(2)
+                if r == '[A': v_idx = (v_idx - 1) % len(v_opts)
+                elif r == '[B': v_idx = (v_idx + 1) % len(v_opts)
+            elif k in ('\r', '\n'): sel_versions['php'] = v_opts[v_idx]; break
 
-    console.print("\n\n")
-    console.print(Align.center(Text("✨ DEPLOYMENT SUCCESSFUL", style="bold green")))
-    console.print(Align.center(Text("Environment is optimized. Please restart your terminal.", style="dim")))
-    console.print("\n")
+    # 3. Inicializar Estados
+    for c in COMPONENTS: installation_states[c['id']] = 'pending' if states[c['id']] else 'skip'
+
+    # 4. Instalación Live UI
+    with Progress(SpinnerColumn(), TextColumn("[bold cyan]{task.description}"), BarColumn(bar_width=None), TextColumn("[white]{task.percentage:>3.0f}%"), console=console) as progress:
+        overall = progress.add_task("Instalando componentes...", total=len(selected_list))
+        
+        with Live(create_install_layout(progress), console=console, screen=True, auto_refresh=True) as live:
+            for c in selected_list:
+                current_component_id = c['id']
+                installation_states[c['id']] = 'installing'
+                args = []
+                if c['id'] == 'node':
+                    live.stop(); console.clear()
+                    node_v = Prompt.ask("\n  [bold cyan]?[/] [white]Enter Node.js version[/]", default="lts")
+                    args = [node_v]; live.start()
+                elif c['id'] == 'php': args = [sel_versions['php']]
+                
+                success = run_bash_cmd(c['id'], args)
+                installation_states[c['id']] = 'success' if success else 'failed'
+                if not success: sys.exit(1)
+                progress.advance(overall)
+                time.sleep(0.5)
+
+    # 5. Final
+    console.clear()
+    panel = Panel(Align.center(Group(Text("\n✨ DEPLOYMENT SUCCESSFUL", style="bold green"), Text("\nYour system is now optimized for Laravel development.", style="dim"), Text("\nPlease restart your terminal to apply all changes.", style="italic"))), border_style="green", box=box.DOUBLE, padding=(1, 4))
+    console.print("\n" * (console.height // 4), Align.center(panel))
 
 if __name__ == "__main__":
     try: main()
-    except KeyboardInterrupt:
-        console.print("\n\n  [bold red]ABORTED[/] [dim]Installation cancelled.[/]\n"); sys.exit(130)
+    except KeyboardInterrupt: console.print("\n\n [bold red]ABORTED[/]\n"); sys.exit(130)

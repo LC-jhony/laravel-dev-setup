@@ -10,7 +10,7 @@ from rich.text import Text
 from rich.rule import Rule
 from rich.console import Group
 from rich.panel import Panel
-from rich.progress import Progress, BarColumn, TextColumn
+from rich.progress import Progress, BarColumn, TextColumn, SpinnerColumn, TimeElapsedColumn
 
 console = Console()
 
@@ -20,7 +20,7 @@ console = Console()
 
 COMPONENTS = [
     {"id": "shell",    "name": "Shell Environment", "desc": "Zsh + P10k + Modern CLI Tools"},
-    {"id": "php",      "name": "PHP Engine",        "desc": "PHP 8.1 - 8.4 + Extensions"},
+    {"id": "php",      "name": "PHP Engine",        "desc": "PHP 8.1 - 8.5 + Extensions"},
     {"id": "mariadb",  "name": "MariaDB Database",  "desc": "SQL Server + Security Wizard"},
     {"id": "node",     "name": "Node.js (NVM)",     "desc": "Node LTS & Package Manager"},
     {"id": "composer", "name": "PHP Composer",      "desc": "Dependency Management"},
@@ -33,15 +33,10 @@ states = {c["id"]: True for c in COMPONENTS}
 #   UI Helpers
 # ─────────────────────────────────────────────────────────────
 
-def clean_ansi(text):
-    """Elimina códigos de color ANSI y caracteres de control para evitar desorden."""
-    ansi_escape = re.compile(r'(?:\x1B[@-_][0-?]*[ -/]*[@-~])')
-    return ansi_escape.sub('', text).replace('\r', '').strip()
-
 def get_header(title_str="LARAVEL DEV SETUP", subtitle_str="PREMIUM ENVIRONMENT BOOTSTRAP"):
     return Group(
         Text("\n"),
-        Align.center(Text(title_str, style="bold cyan tracking5")),
+        Align.center(Text(title_str, style="bold cyan")),
         Align.center(Text(subtitle_str, style="dim italic")),
         Text("\n"),
         Rule(style="dim #333333")
@@ -52,10 +47,9 @@ def get_header(title_str="LARAVEL DEV SETUP", subtitle_str="PREMIUM ENVIRONMENT 
 # ─────────────────────────────────────────────────────────────
 
 def interactive_select(title, options, multi=False, initial_states=None):
-    """Generic selector for components or versions."""
+    """Generic selector for components or versions using arrow keys."""
     idx = 0
-    # Si es multi-selección usamos los estados pasados, si no, inicializamos uno solo
-    selected_states = initial_states if initial_states else {opt['id']: False for opt in options}
+    selected_states = initial_states.copy() if initial_states else {opt['id']: False for opt in options}
     
     import tty, termios
     def getch():
@@ -89,9 +83,10 @@ def interactive_select(title, options, multi=False, initial_states=None):
             items.append(Text("\n"))
             
         footer_text = Text()
-        shortcuts = [("↑↓", "Nav"), ("SPC", "Toggle") if multi else ("ENT", "Select"), ("Q", "Quit")]
+        shortcuts = [("↑↓", "Nav"), ("SPACE", "Toggle") if multi else ("ENTER", "Select"), ("Q", "Quit")]
         for k, a in shortcuts:
-            footer_text.append(f" {k} ", style="bold cyan"); footer_text.append(f"{a}  ", style="dim")
+            footer_text.append(f" {k} ", style="bold cyan")
+            footer_text.append(f"{a}   ", style="dim")
 
         return Group(
             get_header(title.upper(), "INTERACTIVE SELECTION"),
@@ -119,12 +114,29 @@ def interactive_select(title, options, multi=False, initial_states=None):
 #   Execution Engine
 # ─────────────────────────────────────────────────────────────
 
-def run_bash_cmd(cmd_label, script_name, extra_args=None):
-    console.print(f"\n  [bold cyan]▶[/] [white]Deploying:[/] [bold white]{cmd_label}[/]")
+def run_bash_cmd(cmd_label, script_name, extra_args=None, progress=None):
+    # Base command: load environment and installer
+    cmd_parts = [
+        "export SUDO=sudo",
+        "source lib/ui.sh",
+        "source lib/detect.sh",
+        "source lib/repo.sh",
+        f"source installers/{script_name}.sh",
+        "detect_os"
+    ]
     
-    cmd = f"export SUDO=sudo && source lib/ui.sh && source lib/detect.sh && source lib/repo.sh && source installers/{script_name}.sh && install_{script_name}"
-    if extra_args:
-        cmd += f" {' '.join(extra_args)}"
+    if script_name == "php":
+        version = extra_args[0] if extra_args else "8.4"
+        cmd_parts.append("setup_repo")
+        cmd_parts.append(f"install_php {version}")
+        cmd_parts.append(f"set_default_php {version}")
+    else:
+        call_cmd = f"install_{script_name}"
+        if extra_args:
+            call_cmd += f" {' '.join(extra_args)}"
+        cmd_parts.append(call_cmd)
+    
+    cmd = " && ".join(cmd_parts)
     
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
@@ -141,12 +153,15 @@ def run_bash_cmd(cmd_label, script_name, extra_args=None):
             if not char and process.poll() is not None: break
             if char:
                 decoded = char.decode('utf-8', errors='ignore')
-                # Filtramos para que no se vea desordenado
-                if decoded == '\n':
-                    sys.stdout.write('\n     [dim]• [/]')
+                if progress:
+                    # Clean ANSI for progress console print to avoid double colors issues
+                    if decoded == '\n':
+                        progress.console.print("  [dim]│[/]")
+                    else:
+                        progress.console.print(f"  [dim]│[/] {decoded.strip()}", end="\r")
                 else:
                     sys.stdout.write(decoded)
-                sys.stdout.flush()
+                    sys.stdout.flush()
             
         process.wait()
         return process.returncode == 0
@@ -166,7 +181,7 @@ def main():
     # 2. Configuración de Versiones
     selected_versions = {}
     if states['php']:
-        opts = [{"id": v, "name": f"PHP {v}"} for v in ["8.4", "8.3", "8.2", "8.1"]]
+        opts = [{"id": v, "name": f"PHP {v}"} for v in ["8.5", "8.4", "8.3", "8.2", "8.1"]]
         selected_versions['php'] = interactive_select("PHP Engine", opts)
     
     if states['node']:
@@ -181,43 +196,52 @@ def main():
     try:
         subprocess.run(["sudo", "-v"], check=True)
     except:
+        console.print("\n  [bold red]ABORTED[/] [dim]Authentication failed.[/]\n")
         sys.exit(1)
 
     # 4. Ejecución
     selected_list = [c for c in COMPONENTS if states[c['id']]]
-    
+    if not selected_list:
+        console.print("\n  [yellow]No items selected. Exiting.[/]\n")
+        return
+
     with Progress(
-        TextColumn("  [bold cyan]{task.description:<30}"),
-        BarColumn(bar_width=40, style="#222222", complete_style="cyan"),
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(bar_width=40, style="dim", complete_style="cyan"),
         TextColumn("[bold white]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
         console=console
     ) as progress:
         
-        overall_task = progress.add_task("Total Progress", total=len(selected_list))
+        overall_task = progress.add_task("[bold white]Overall Deployment", total=len(selected_list))
         
         for c in selected_list:
-            progress.update(overall_task, description=f"Installing {c['name']}")
+            comp_task = progress.add_task(f"[cyan]Installing {c['name']}...", total=None)
             
             args = []
             if c['id'] == 'php': args = [selected_versions['php']]
             if c['id'] == 'node': args = [selected_versions['node']]
             
-            # Detenemos temporalmente el progreso para mostrar el log limpio
-            progress.stop()
-            success = run_bash_cmd(c['name'], c['id'], args)
-            progress.start()
+            success = run_bash_cmd(c['name'], c['id'], args, progress)
             
-            if not success:
-                console.print(f"\n  [bold red]✖ {c['name']} failed.[/]")
+            if success:
+                progress.update(comp_task, description=f"[green]✓ {c['name']} Complete", completed=100, total=100)
+                progress.advance(overall_task)
+            else:
+                progress.update(comp_task, description=f"[red]✗ {c['name']} Failed")
                 sys.exit(1)
-            
-            progress.advance(overall_task)
         
-        progress.update(overall_task, description="All systems ready")
+        progress.update(overall_task, description="[bold green]All systems ready")
 
     console.print("\n\n" + Align.center(Text("✨ DEPLOYMENT SUCCESSFUL", style="bold green")))
     console.print(Align.center(Text("Environment is optimized. Please restart your terminal.", style="dim")))
     console.print("\n")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Exit quietly on Ctrl+C
+        console.print("\n\n  [bold red]ABORTED[/] [dim]Installation cancelled by user.[/]\n")
+        sys.exit(130)

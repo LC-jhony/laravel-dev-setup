@@ -163,17 +163,20 @@ def main():
         for i, c in enumerate(COMPONENTS):
             active = (i == idx)
             mark_text = " [bold cyan]●[/] " if states[c['id']] else " [dim]○[/] "
-            icon_text = f"{c['icon']} "
             tag_text = f" [green][v{installed_info[c['id']]}] [/]" if installed_info[c['id']] else ""
             
-            # Construimos la línea usando markup para que Rich procese todo correctamente
+            # Construimos la línea base
             line = Text.from_markup(
-                f"{'  ┃ ' if active else '    '}{mark_text}{icon_text}",
+                f"{'  ┃ ' if active else '    '}{mark_text}",
                 style="cyan" if active else "default"
             )
             line.append(f"{c['name']:<22}", style="bold white" if active else ("white" if states[c['id']] else "dim"))
             line.append(Text.from_markup(tag_text))
-            line.append(f" {c['desc']}", style="dim italic")
+            
+            # Icono y Descripción después del nombre
+            line.append(" ➜ ", style="dim")
+            line.append(Text.from_markup(f"{c['icon']} "))
+            line.append(f"{c['desc']}", style="dim italic")
             console.print(line)
         
         key = getch()

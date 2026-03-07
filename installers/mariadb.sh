@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-#   installers/mariadb.sh — MariaDB installation (ROBUST)
+#   installers/mariadb.sh — MariaDB installation (ULTRA ROBUST)
 # ============================================================
 
 install_mariadb() {
@@ -10,32 +10,40 @@ install_mariadb() {
   run_step "Installing mariadb-server & mariadb-client" \
     bash -c "DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y mariadb-server mariadb-client"
 
-  # Detectar si usamos systemd o init.d (WSL support)
-  if pidof systemd &>/dev/null; then
-    run_step "Enabling mariadb service on boot" \
-      $SUDO systemctl enable mariadb
-    
-    # Intentar iniciar con systemctl, si falla usar service (más robusto en algunos entornos)
-    spinner_start "Starting mariadb service"
-    if $SUDO systemctl start mariadb &>/dev/null; then
-      spinner_stop
-      msg_ok "Starting mariadb service"
-    else
-      if $SUDO service mariadb start &>/dev/null; then
-        spinner_stop
-        msg_ok "Starting mariadb service (via service manager)"
-      else
-        spinner_stop
-        msg_fail "Starting mariadb service"
-        echo -e "   ${DIM}Tip: Try running 'sudo journalctl -xeu mariadb.service' to see errors.${RESET}"
-        exit 1
-      fi
-    fi
+  # 1. Asegurar que no esté bloqueado (enmascarado)
+  $SUDO systemctl unmask mariadb &>/dev/null || true
+  $SUDO systemctl unmask mysql &>/dev/null || true
+
+  # 2. Recargar configuración de servicios
+  run_step "Reloading system daemon" \
+    $SUDO systemctl daemon-reload
+
+  # 3. Intentar arrancar con limpieza previa
+  spinner_start "Starting mariadb service"
+  
+  # Detener cualquier rastro previo para evitar conflictos de socket
+  $SUDO systemctl stop mariadb &>/dev/null || true
+  
+  if $SUDO systemctl start mariadb &>/dev/null; then
+    spinner_stop
+    msg_ok "Starting mariadb service"
   else
-    # Fallback para sistemas sin systemd (como WSL tradicional)
-    run_step "Starting mariadb service (SysV)" \
-      $SUDO service mariadb start
+    # Si falla, intentar el comando tradicional de Debian
+    if $SUDO service mariadb start &>/dev/null; then
+      spinner_stop
+      msg_ok "Starting mariadb service (via service manager)"
+    else
+      spinner_stop
+      msg_fail "Starting mariadb service"
+      echo -e "\n   ${RED}⚠ ERROR: MariaDB no pudo arrancar.${RESET}"
+      echo -e "   ${DIM}Posibles causas: Puerto 3306 ocupado o falta de memoria.${RESET}"
+      echo -e "   ${DIM}Revisa con: sudo journalctl -u mariadb -n 20${RESET}\n"
+      exit 1
+    fi
   fi
+
+  run_step "Enabling mariadb service on boot" \
+    $SUDO systemctl enable mariadb
 
   msg_ok "MariaDB installed and running"
   echo ""
@@ -44,17 +52,11 @@ install_mariadb() {
   section "MariaDB Secure Installation"
   echo ""
   msg_info "This will run 'mariadb-secure-installation' interactively."
-  msg_info "You will be asked to set a root password and harden the setup."
   echo ""
 
   if prompt_confirm "Run mariadb-secure-installation now?" "y"; then
     echo ""
-    draw_line "─" "$DIM"
-    echo ""
-    # Forzar modo interactivo real
     $SUDO mariadb-secure-installation
-    echo ""
-    draw_line "─" "$DIM"
     echo ""
     msg_ok "MariaDB secure installation complete"
   else

@@ -118,18 +118,16 @@ def run_bash_cmd(script_id, extra_args=None, progress=None):
         cmd_parts.append(call)
     
     full_cmd = " && ".join(cmd_parts)
+    master_fd, slave_fd = pty.openpty()
     env = os.environ.copy()
     env["PYTHONIOENCODING"], env["LARAVEL_SETUP_RICH"] = "utf-8", "1"
     
-    # Si progress es None, significa que queremos interactividad total (ej. MariaDB)
+    # Si no hay progreso, forzar modo interactivo para MariaDB y otros
     if progress is None:
         env["DEBIAN_FRONTEND"] = "interactive"
-        result = subprocess.run(["bash", "-c", full_cmd], env=env)
-        return result.returncode == 0
+    else:
+        env["DEBIAN_FRONTEND"] = "noninteractive"
 
-    # Modo con prefijo │ y barra de progreso
-    env["DEBIAN_FRONTEND"] = "noninteractive"
-    master_fd, slave_fd = pty.openpty()
     process = subprocess.Popen(["bash", "-c", full_cmd], stdin=slave_fd, stdout=slave_fd, stderr=slave_fd, close_fds=True, env=env, preexec_fn=os.setsid)
     CURRENT_PROCESS = process
     os.close(slave_fd); buffer = ""
@@ -141,18 +139,27 @@ def run_bash_cmd(script_id, extra_args=None, progress=None):
                 data = os.read(master_fd, 1024)
                 if not data: break
                 chunk = data.decode('utf-8', errors='replace'); buffer += chunk
+                
+                # Inyección automática de contraseña
                 if "password for" in buffer.lower() and ":" in buffer:
-                    progress.stop()
+                    if progress: progress.stop()
                     CACHED_PASSWORD = CACHED_PASSWORD or modern_modal_password()
                     os.write(master_fd, (CACHED_PASSWORD + "\n").encode()); buffer = ""
-                    progress.start()
+                    if progress: progress.start()
+                
                 elif "\n" in buffer:
                     lines = buffer.split("\n")
                     for line in lines[:-1]:
                         clean = line.strip()
                         if clean and "password for" not in clean.lower():
-                            progress.console.print(f"  [{theme['dim']}]│[/] {clean}")
+                            if progress: progress.console.print(f"  [{theme['dim']}]│[/] {clean}")
+                            else: sys.stdout.write(line + "\n"); sys.stdout.flush()
                     buffer = lines[-1]
+                
+                # Si estamos en modo interactivo puro (sin prefijo), volcamos el buffer restante
+                elif progress is None and buffer:
+                    sys.stdout.write(buffer); sys.stdout.flush(); buffer = ""
+
             if process.poll() is not None and not r: break
         except: break
     

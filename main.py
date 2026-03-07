@@ -10,6 +10,8 @@ from rich.live import Live
 from rich.prompt import Prompt
 from rich import box
 from rich.align import Align
+from rich.text import Text
+from rich.style import Style
 
 console = Console()
 
@@ -18,12 +20,12 @@ console = Console()
 # ─────────────────────────────────────────────────────────────
 
 COMPONENTS = [
-    {"id": "shell",    "name": "Shell Environment", "desc": "Zsh + P10k + Modern CLI Tools"},
-    {"id": "php",      "name": "PHP Engine",        "desc": "Custom Versions & Extensions"},
-    {"id": "mariadb",  "name": "MariaDB Database",  "desc": "SQL Server + Security Wizard"},
-    {"id": "node",     "name": "Node.js (NVM)",     "desc": "Node LTS & Package Manager"},
-    {"id": "composer", "name": "PHP Composer",      "desc": "Global Dependency Management"},
-    {"id": "valet",    "name": "Laravel Valet",     "desc": "Elite Local Development Server"},
+    {"id": "shell",    "name": "Shell Environment", "desc": "Zsh + P10k + Modern CLI Tools", "icon": "🐚"},
+    {"id": "php",      "name": "PHP Engine",        "desc": "Versions 8.1 - 8.4 + Extensions", "icon": "🐘"},
+    {"id": "mariadb",  "name": "MariaDB Database",  "desc": "SQL Server + Security Wizard", "icon": "🗄️ "},
+    {"id": "node",     "name": "Node.js (NVM)",     "desc": "Node LTS & Package Manager", "icon": "🟢"},
+    {"id": "composer", "name": "PHP Composer",      "desc": "Global Dependency Management", "icon": "📦"},
+    {"id": "valet",    "name": "Laravel Valet",     "desc": "Local Development Server", "icon": "⚡"},
 ]
 
 states = {c["id"]: True for c in COMPONENTS}
@@ -34,44 +36,90 @@ current_index = 0
 # ─────────────────────────────────────────────────────────────
 
 def get_header():
-    title = "[bold cyan]██╗      █████╗ ██████╗  █████╗ ██╗   ██╗███████╗██╗     \n" \
-            "██║     ██╔══██╗██╔══██╗██╔══██╗██║   ██║██╔════╝██║     \n" \
-            "██║     ███████║██████╔╝███████║██║   ██║█████╗  ██║     \n" \
-            "██║     ██╔══██║██╔══██╗██╔══██║╚██╗ ██╔╝██╔══╝  ██║     \n" \
-            "███████╗██║  ██║██║  ██║██║  ██║ ╚████╔╝ ███████╗███████╗\n" \
-            "╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚══════╝[/]"
-    return Panel(Align.center(title), style="cyan", box=box.ROUNDED)
+    title = Text.assemble(
+        ("LARAVEL", "bold cyan"), " ", ("DEV", "bold white"), " ", ("SETUP", "bold magenta")
+    )
+    subtitle = Text("Professional Development Environment Bootstrap", style="dim")
+    
+    header_content = VerticalGroup(
+        Align.center(title),
+        Align.center(subtitle)
+    )
+    
+    return Panel(header_content, style="cyan", box=box.HORIZONTALS, padding=(1, 0))
 
-def get_dashboard_table():
-    table = Table(box=None, expand=True)
-    table.add_column("State", width=8, justify="center")
-    table.add_column("ID", width=4, justify="right", style="dim")
-    table.add_column("Component", style="bold white")
-    table.add_column("Description", style="dim italic")
+class VerticalGroup:
+    def __init__(self, *renderables):
+        self.renderables = renderables
+    def __rich__(self):
+        from rich.console import Group
+        return Group(*self.renderables)
+
+def get_dashboard():
+    table = Table(box=None, expand=True, show_header=False, padding=(0, 2))
+    table.add_column("Status", width=6)
+    table.add_column("Icon", width=4)
+    table.add_column("Details")
 
     for i, c in enumerate(COMPONENTS):
         cid = c["id"]
-        checkbox = "[green]● [✔][/]" if states[cid] else "[dim]○ [ ][/]"
+        is_selected = states[cid]
+        is_active = (i == current_index)
         
-        # Highlight current cursor
-        prefix = "[bold magenta]➜[/] " if i == current_index else "  "
-        
-        style = "on #333333" if i == current_index else ""
+        # Style logic
+        check_mark = "✅" if is_selected else "⬜"
+        name_style = "bold white" if is_selected else "dim"
+        if is_active:
+            name_style = "bold reverse cyan"
+            row_style = "on #222222"
+        else:
+            row_style = ""
+
+        name_text = Text.assemble(
+            (f" {c['name']} ", name_style),
+            ("\n   " + c['desc'], "dim italic")
+        )
+
         table.add_row(
-            prefix + checkbox,
-            str(i + 1),
-            c["name"],
-            c["desc"],
-            style=style
+            Align.center(check_mark),
+            Align.center(c['icon']),
+            name_text,
+            style=row_style
         )
     
-    return Panel(table, title="[bold white]DASHBOARD: COMPONENT SELECTION[/]", subtitle="[dim]Use [bold white]↑/↓[/] to navigate · [bold white]Space[/] to toggle · [bold white]Enter[/] to Install · [bold white]Q[/] to Quit[/]", box=box.ROUNDED)
+    return Panel(
+        table, 
+        title="[bold white]COMPONENTS[/]", 
+        border_style="dim",
+        padding=(1, 1)
+    )
+
+def get_footer():
+    shortcuts = [
+        ("[bold magenta]↑/↓[/]", "Navigate"),
+        ("[bold magenta]Space[/]", "Toggle"),
+        ("[bold green]Enter[/]", "Install"),
+        ("[bold red]Q[/]", "Quit")
+    ]
+    parts = [f"{key} {desc}" for key, desc in shortcuts]
+    return Panel(Align.center("  •  ".join(parts)), style="dim", box=box.SIMPLE)
+
+def make_layout():
+    layout = Layout()
+    layout.split_column(
+        Layout(get_header(), size=5),
+        Layout(get_dashboard(), name="main"),
+        Layout(get_footer(), size=3)
+    )
+    return layout
+
+# ─────────────────────────────────────────────────────────────
+#   Installation Logic
+# ─────────────────────────────────────────────────────────────
 
 def run_bash_cmd(cmd_label, script_name, extra_args=None):
-    console.print(f"\n[bold blue]➜[/] Installing [bold white]{cmd_label}[/]...")
+    console.print(f"\n[bold cyan]▶[/] [white]Installing:[/] [bold cyan]{cmd_label}[/]")
     
-    # We call bash to source the installer and run the function
-    # Example: source installers/php.sh && install_php
     cmd = f"source lib/ui.sh && source lib/detect.sh && source lib/repo.sh && source installers/{script_name}.sh && install_{script_name}"
     if extra_args:
         cmd += f" {' '.join(extra_args)}"
@@ -87,22 +135,18 @@ def run_bash_cmd(cmd_label, script_name, extra_args=None):
         )
         
         for line in process.stdout:
-            sys.stdout.write(f"   [dim]│[/] {line}")
+            sys.stdout.write(f"  [dim]│[/] {line}")
             sys.stdout.flush()
             
         process.wait()
-        if process.returncode == 0:
-            console.print(f"   [bold green]✔[/] {cmd_label} installed successfully.")
-        else:
-            console.print(f"   [bold red]✘[/] {cmd_label} installation failed.")
-            sys.exit(1)
+        return process.returncode == 0
             
     except Exception as e:
-        console.print(f"[red]Error executing {cmd_label}: {e}[/]")
-        sys.exit(1)
+        console.print(f"[red]Error: {e}[/]")
+        return False
 
 # ─────────────────────────────────────────────────────────────
-#   Main Loop
+#   Main Execution
 # ─────────────────────────────────────────────────────────────
 
 def main():
@@ -116,21 +160,15 @@ def main():
         try:
             tty.setraw(sys.stdin.fileno())
             ch = sys.stdin.read(1)
-            if ch == '\x1b': # arrow keys
+            if ch == '\x1b':
                 ch += sys.stdin.read(2)
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return ch
 
-    with Live(auto_refresh=True) as live:
+    # Keyboard loop
+    with Live(make_layout(), auto_refresh=False, screen=True) as live:
         while True:
-            layout = Layout()
-            layout.split_column(
-                Layout(get_header(), size=8),
-                Layout(get_dashboard_table())
-            )
-            live.update(layout)
-            
             key = getch()
             
             if key == '\x1b[A': # Up
@@ -144,50 +182,36 @@ def main():
                 break
             elif key.lower() == 'q':
                 sys.exit(0)
-            elif key.isdigit():
-                idx = int(key) - 1
-                if 0 <= idx < len(COMPONENTS):
-                    cid = COMPONENTS[idx]["id"]
-                    states[cid] = not states[cid]
+            
+            live.update(make_layout(), refresh=True)
 
-    # Final Summary before installation
+    # Final review
     console.clear()
     console.print(get_header())
     
-    summary_table = Table(title="[bold white]READY TO DEPLOY[/]", box=box.ROUNDED)
-    summary_table.add_column("Component", style="bold white")
-    summary_table.add_column("Status", justify="center")
-    
-    selected_any = False
-    for c in COMPONENTS:
-        if states[c["id"]]:
-            summary_table.add_row(c["name"], "[green]READY[/]")
-            selected_any = True
-            
-    if not selected_any:
-        console.print("[yellow]No components selected. Exiting.[/]")
-        sys.exit(0)
-        
-    console.print(Align.center(summary_table))
-    
-    if Prompt.ask("\n[bold white]Begin installation?[/]", choices=["y", "n"], default="y") != "y":
-        sys.exit(0)
+    selected = [c for c in COMPONENTS if states[c["id"]]]
+    if not selected:
+        console.print("\n[yellow]No components selected. Exiting.[/]")
+        return
 
-    # Trigger Sudo
-    console.print("\n[bold yellow]! Authentication Required[/]")
+    # Sudo Auth
+    console.print(Panel("[bold yellow]Password Required[/]\n[dim]The installer needs sudo privileges to continue.", box=box.ROUNDED, expand=False))
     subprocess.run(["sudo", "-v"], check=True)
 
-    # Start Installation
-    for c in COMPONENTS:
-        if states[c["id"]]:
-            # Special case for PHP version choice
-            if c["id"] == "php":
-                php_version = Prompt.ask("   Select PHP Version", choices=["8.5", "8.4", "8.3", "8.2", "8.1"], default="8.4")
-                run_bash_cmd(c["name"], c["id"], [php_version])
-            else:
-                run_bash_cmd(c["name"], c["id"])
+    # Start Progress
+    for c in selected:
+        args = None
+        if c["id"] == "php":
+            console.print("")
+            version = Prompt.ask("[bold cyan]?[/] [white]Choose PHP Version[/]", choices=["8.5", "8.4", "8.3", "8.2", "8.1"], default="8.4")
+            args = [version]
+        
+        success = run_bash_cmd(c["name"], c["id"], args)
+        if not success:
+            console.print(f"\n[bold red]FATAL:[/] {c['name']} failed. Check logs above.")
+            sys.exit(1)
 
-    console.print("\n[bold green]🎉 INSTALLATION COMPLETED SUCCESSFULLY![/]")
+    console.print("\n" + Panel.fit("[bold green]✨ EVERYTHING IS READY! ✨[/]\n[dim]Log out and back in to apply all changes.", border_style="green", padding=(1, 5)))
 
 if __name__ == "__main__":
     main()

@@ -125,7 +125,8 @@ def run_bash_cmd(cmd_label, script_name, extra_args=None):
     console.print(f"\n  [bold cyan]INITIALIZING[/] [white]{cmd_label}[/]")
     console.print(f"  [dim]──────────────────────────────────────────────────[/]")
     
-    cmd = f"source lib/ui.sh && source lib/detect.sh && source lib/repo.sh && source installers/{script_name}.sh && install_{script_name}"
+    # We define SUDO=sudo to ensure scripts have the correct variable
+    cmd = f"export SUDO=sudo && source lib/ui.sh && source lib/detect.sh && source lib/repo.sh && source installers/{script_name}.sh && install_{script_name}"
     if extra_args:
         cmd += f" {' '.join(extra_args)}"
     
@@ -134,6 +135,7 @@ def run_bash_cmd(cmd_label, script_name, extra_args=None):
     env["LANG"] = "en_US.UTF-8"
     
     try:
+        # We use binary mode and decode manually to handle special characters correctly
         process = subprocess.Popen(
             ["bash", "-c", cmd],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -146,8 +148,9 @@ def run_bash_cmd(cmd_label, script_name, extra_args=None):
                 break
             if char:
                 try:
-                    decoded = char.decode('utf-8', errors='ignore')
-                    # We output with a subtle indent for cleaner logs
+                    # Decode with 'replace' to avoid crashing on partial multi-byte sequences
+                    decoded = char.decode('utf-8', errors='replace')
+                    # Prepend indentation for a clean UI look
                     if decoded == '\n':
                         sys.stdout.write('\n  [dim]│ [/]')
                     else:
@@ -238,6 +241,12 @@ def main():
         if c["id"] == "php":
             console.print("\n")
             version = Prompt.ask("  [bold cyan]?[/] [white]Select PHP Engine[/]", choices=["8.4", "8.3", "8.2", "8.1"], default="8.4")
+            args = [version]
+        
+        if c["id"] == "node":
+            console.print("\n")
+            # We allow common LTS versions, numeric versions or 'lts'
+            version = Prompt.ask("  [bold cyan]?[/] [white]Select Node.js Version[/]", choices=["22", "20", "18", "lts", "node"], default="lts")
             args = [version]
         
         if not run_bash_cmd(c["name"], c["id"], args):

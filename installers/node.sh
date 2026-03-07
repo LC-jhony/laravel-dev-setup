@@ -6,11 +6,11 @@
 # ============================================================
 
 NVM_VERSION="v0.40.4"
-NODE_VERSION="24"
 NVM_INSTALL_URL="https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh"
 
 install_node() {
-  section "Installing NVM + Node.js ${NODE_VERSION}"
+  local version="${1:-lts}"
+  section "Installing NVM + Node.js ${version}"
   echo ""
 
   # ── Install NVM ──────────────────────────────────────────
@@ -40,11 +40,11 @@ install_node() {
   fi
 
   # ── Install Node.js ──────────────────────────────────────
-  run_step "Installing Node.js ${NODE_VERSION}" \
-    bash -c ". \"${NVM_DIR}/nvm.sh\" && nvm install ${NODE_VERSION}"
+  run_step "Installing Node.js ${version}" \
+    bash -c ". \"${NVM_DIR}/nvm.sh\" && nvm install ${version}"
 
-  run_step "Setting Node.js ${NODE_VERSION} as default" \
-    bash -c ". \"${NVM_DIR}/nvm.sh\" && nvm alias default ${NODE_VERSION}"
+  run_step "Setting Node.js ${version} as default" \
+    bash -c ". \"${NVM_DIR}/nvm.sh\" && nvm alias default ${version}"
 
   echo ""
   msg_ok "Node.js $(. "${NVM_DIR}/nvm.sh" && node --version 2>/dev/null || echo '(restart shell to verify)') installed"

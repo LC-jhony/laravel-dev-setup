@@ -121,6 +121,7 @@ main() {
   fi
 
   # 5. EXECUTION
+  check_privileges
   check_apt
 
   [[ "${STATES[shell]}"    == "1" ]] && install_shell

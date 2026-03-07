@@ -21,20 +21,29 @@ clear
 echo -e "${CYAN}${BOLD}🚀 LARAVEL DEV SETUP — Professional Bootstrap${RESET}"
 echo -e "${DIM}--------------------------------------------------${RESET}"
 
-# 1. Pre-flight checks
-echo -ne "  ${CYAN}●${RESET} Checking prerequisites... "
-for cmd in git curl sudo python3 pip3; do
-    if ! command -v "$cmd" &>/dev/null; then
-        if [[ "$cmd" == "pip3" ]]; then
-            echo -ne "\n  ${YELLOW}●${RESET} Installing pip... "
-            sudo apt-get update &>/dev/null && sudo apt-get install -y python3-pip &>/dev/null
-        else
-            echo -e "\n  ${RED}✖ Error: '$cmd' is not installed.${RESET}"
-            exit 1
-        fi
+# 1. Pre-flight checks & Auto-Installation
+echo -ne "  ${CYAN}●${RESET} Preparing environment... "
+
+# Required packages for the bootstrapper to work
+REQUIRED_PKGS=("git" "curl" "python3" "python3-pip" "unzip" "sudo")
+MISSING_PKGS=()
+
+for pkg in "${REQUIRED_PKGS[@]}"; do
+    if [[ "$pkg" == "python3-pip" ]]; then
+        if ! command -v pip3 &>/dev/null; then MISSING_PKGS+=("$pkg"); fi
+    elif ! command -v "$pkg" &>/dev/null; then
+        MISSING_PKGS+=("$pkg")
     fi
 done
-echo -e "${GREEN}Done${RESET}"
+
+if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
+    echo -e "\n  ${YELLOW}●${RESET} Installing missing tools: ${MISSING_PKGS[*]}..."
+    sudo apt-get update &>/dev/null
+    sudo apt-get install -y "${MISSING_PKGS[@]}" &>/dev/null
+    echo -e "  ${GREEN}●${RESET} Tools installed successfully."
+else
+    echo -e "${GREEN}Ready${RESET}"
+fi
 
 # 2. Preparation
 if [ -d "$INSTALL_PATH" ]; then

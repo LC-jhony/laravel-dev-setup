@@ -48,7 +48,6 @@ def get_header(title_str="LARAVEL DEV SETUP", subtitle_str="PREMIUM ENVIRONMENT 
     )
 
 def show_password_prompt():
-    """Muestra el prompt de contraseña estilizado y devuelve la entrada."""
     panel = Panel(
         Text("Administrative privileges are required for this step.\nPlease confirm your password.", justify="center"),
         title="[bold yellow]🔒 SECURITY CHECK",
@@ -58,10 +57,11 @@ def show_password_prompt():
     console.print("\n")
     console.print(Align.center(panel))
     console.print("\n")
+    # Forzamos a Prompt a usar /dev/tty si es posible para mayor robustez
     return Prompt.ask("  [bold cyan]Password[/]", password=True)
 
 # ─────────────────────────────────────────────────────────────
-#   Interactive Selector System
+#   Interactive Selector System (FIXED FOR CURL | BASH)
 # ─────────────────────────────────────────────────────────────
 
 def interactive_select(title, options, multi=False, initial_states=None):
@@ -69,16 +69,21 @@ def interactive_select(title, options, multi=False, initial_states=None):
     selected_states = initial_states.copy() if initial_states else {opt['id']: False for opt in options}
     
     import tty, termios
+    
     def getch():
-        fd = sys.stdin.fileno()
+        """Lee una tecla directamente desde /dev/tty para evitar errores de IOCTL."""
+        # Abrimos el dispositivo de terminal directamente
+        fd = os.open('/dev/tty', os.O_RDONLY)
         old_settings = termios.tcgetattr(fd)
         try:
-            tty.setraw(sys.stdin.fileno())
-            ch = sys.stdin.read(1)
-            if ch == '\x1b': ch += sys.stdin.read(2)
+            tty.setcbreak(fd) # Modo que permite leer tecla a tecla
+            ch = os.read(fd, 3) # Leemos hasta 3 bytes para capturar secuencias de flechas (\x1b[A, etc)
+            if isinstance(ch, bytes):
+                return ch.decode('utf-8', errors='ignore')
+            return ch
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return ch
+            os.close(fd)
 
     def render():
         items = [Text("\n")]
@@ -103,8 +108,9 @@ def interactive_select(title, options, multi=False, initial_states=None):
     with Live(render(), auto_refresh=False, screen=True) as live:
         while True:
             key = getch()
-            if key == '\x1b[A': idx = (idx - 1) % len(options)
-            elif key == '\x1b[B': idx = (idx + 1) % len(options)
+            # Mapeo de teclas (flechas envían secuencias \x1b[A, \x1b[B, etc)
+            if key in ('\x1b[A', 'k'): idx = (idx - 1) % len(options)
+            elif key in ('\x1b[B', 'j'): idx = (idx + 1) % len(options)
             elif key == ' ' and multi:
                 cid = options[idx]['id']
                 selected_states[cid] = not selected_states[cid]
@@ -148,84 +154,48 @@ def run_bash_cmd(cmd_label, script_name, extra_args=None, progress=None):
         console.print(f"  [dim]──────────────────────────────────────────────────[/]\n")
         progress.start()
 
-    # Usamos PTY (Pseudo-Terminal) para engañar a sudo y poder interceptar su output
     master_fd, slave_fd = pty.openpty()
-    
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
     
     process = subprocess.Popen(
         ["bash", "-c", full_cmd],
-        stdin=slave_fd,
-        stdout=slave_fd,
-        stderr=slave_fd,
-        close_fds=True,
-        env=env
+        stdin=slave_fd, stdout=slave_fd, stderr=slave_fd,
+        close_fds=True, env=env
     )
-    os.close(slave_fd) # Cerramos el esclavo en el padre
+    os.close(slave_fd)
 
     buffer = ""
-    
     while True:
         try:
             r, _, _ = select.select([master_fd], [], [], 0.1)
             if master_fd in r:
                 data = os.read(master_fd, 1024)
-                if not data:
-                    break
-                
+                if not data: break
                 chunk = data.decode('utf-8', errors='replace')
                 buffer += chunk
                 
-                # Detectar prompt de sudo (cualquier variante común)
                 if "password for" in buffer.lower() and ":" in buffer:
-                    # Se detectó la petición de contraseña
                     if progress: progress.stop()
-                    
-                    # Intentamos usar la cache primero, si no, pedimos
-                    pwd_to_send = CACHED_PASSWORD
-                    
-                    # Si no hay cache o queremos confirmar, mostramos UI
-                    # (Aquí asumimos que si sudo pregunta, es mejor mostrar la UI "Rich"
-                    #  para dar feedback visual de qué está pasando, como pidió el usuario)
-                    if not pwd_to_send:
-                         pwd_to_send = show_password_prompt()
-                         CACHED_PASSWORD = pwd_to_send # Actualizamos cache
-                    else:
-                        # Opcional: Si quieres que SIEMPRE salga el prompt visual, comenta el 'if' anterior
-                        # y descomenta la siguiente línea:
-                        # pwd_to_send = show_password_prompt()
-                        pass 
-
-                    # Enviamos la contraseña al terminal
+                    pwd_to_send = CACHED_PASSWORD or show_password_prompt()
+                    CACHED_PASSWORD = pwd_to_send
                     os.write(master_fd, (pwd_to_send + "\n").encode())
-                    buffer = "" # Limpiamos buffer
-                    
+                    buffer = ""
                     if progress: progress.start()
                 
                 elif "\n" in buffer:
-                    # Imprimimos líneas completas y limpias
                     lines = buffer.split("\n")
                     for line in lines[:-1]:
                         clean_line = line.strip()
                         if clean_line and "password for" not in clean_line.lower(): 
-                             if progress:
-                                progress.console.print(f"  [dim]│[/] {clean_line}")
-                             else:
-                                console.print(f"  [dim]│[/] {clean_line}")
+                             if progress: progress.console.print(f"  [dim]│[/] {clean_line}")
+                             else: console.print(f"  [dim]│[/] {clean_line}")
                     buffer = lines[-1]
-            
-            if process.poll() is not None and not r:
-                break
-                
-        except (IOError, OSError):
-            break
+            if process.poll() is not None and not r: break
+        except (IOError, OSError): break
 
     process.wait()
-    
-    if progress:
-        console.print(f"\n  [dim]──────────────────────────────────────────────────[/]")
-        
+    if progress: console.print(f"\n  [dim]──────────────────────────────────────────────────[/]")
     return process.returncode == 0
 
 # ─────────────────────────────────────────────────────────────
@@ -234,12 +204,8 @@ def run_bash_cmd(cmd_label, script_name, extra_args=None, progress=None):
 
 def main():
     global CACHED_PASSWORD
+    states = interactive_select("Components", COMPONENTS, multi=True, initial_states={c["id"]: True for c in COMPONENTS})
 
-    # 1. Selección de Componentes
-    global states
-    states = interactive_select("Components", COMPONENTS, multi=True, initial_states=states)
-
-    # 2. Configuración de PHP
     selected_versions = {}
     if states['php']:
         opts = [
@@ -251,45 +217,34 @@ def main():
         ]
         selected_versions['php'] = interactive_select("PHP Engine", opts)
 
-    # 3. Escalación de Privilegios Rich (Inicial)
     console.clear()
     console.print(get_header())
     
     panel = Panel(
-        Text("Administrative privileges are required to configure your system.\nPlease enter your password to authorize the deployment.", justify="center"),
-        title="[bold yellow]🔒 PRIVILEGE ESCALATION",
-        border_style="yellow",
-        padding=(1, 2)
+        Text("Administrative privileges are required for system configuration.\nPlease enter your password to authorize deployment.", justify="center"),
+        title="[bold yellow]🔒 PRIVILEGE ESCALATION", border_style="yellow", padding=(1, 2)
     )
-    console.print("\n")
-    console.print(Align.center(panel))
-    console.print("\n")
+    console.print("\n", Align.center(panel), "\n")
     
     authenticated = False
     while not authenticated:
         pwd = Prompt.ask("  [bold cyan]Password[/]", password=True)
-        # Validar password con sudo -S
         proc = subprocess.Popen(["sudo", "-S", "-v"], stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         proc.communicate(input=f"{pwd}\n".encode())
-        
         if proc.returncode == 0:
             authenticated = True
-            CACHED_PASSWORD = pwd # Guardamos para uso futuro automático
-            msg = Text("✓ Authentication Successful", style="bold green")
-            console.print(Align.center(msg))
-            time.sleep(1)
+            CACHED_PASSWORD = pwd
+            console.print(Align.center(Text("✓ Authentication Successful", style="bold green")))
+            time.sleep(0.5)
         else:
             console.print("  [bold red]✖ Incorrect password. Please try again.[/]")
 
-    # 4. Sudo Keep-Alive (Hilo de fondo)
     def keep_sudo_alive():
         while True:
             subprocess.run(["sudo", "-n", "true"], check=False)
             time.sleep(60)
-            
     threading.Thread(target=keep_sudo_alive, daemon=True).start()
 
-    # 5. Ejecución
     selected_list = [c for c in COMPONENTS if states[c['id']]]
     if not selected_list:
         console.print("\n  [yellow]No items selected. Exiting.[/]\n")
@@ -301,18 +256,14 @@ def main():
         BarColumn(bar_width=40, style="dim", complete_style="cyan"),
         TextColumn("[bold white]{task.percentage:>3.0f}%"),
         TimeElapsedColumn(),
-        console=console,
-        transient=False
+        console=console, transient=False
     ) as progress:
-        
         overall_task = progress.add_task("[bold white]Overall Deployment", total=len(selected_list))
-        
         for c in selected_list:
             args = []
             if c['id'] == 'node':
                 progress.stop()
-                console.print("\n")
-                node_ver = Prompt.ask("  [bold cyan]?[/] [white]Enter Node.js version[/] [dim](e.g. 22, lts, 20.10.0)[/]", default="lts")
+                node_ver = Prompt.ask("\n  [bold cyan]?[/] [white]Enter Node.js version[/] [dim](e.g. 22, lts)[/]", default="lts")
                 args = [node_ver]
                 progress.start()
             elif c['id'] == 'php':
@@ -320,18 +271,14 @@ def main():
             
             comp_task = progress.add_task(f"[cyan]Installing {c['name']}...", total=None)
             success = run_bash_cmd(c['name'], c['id'], args, progress)
-            
             if success:
                 progress.update(comp_task, description=f"[green]✓ {c['name']} Complete", completed=100, total=100)
                 progress.advance(overall_task)
             else:
                 progress.update(comp_task, description=f"[red]✗ {c['name']} Failed")
-                console.print(f"\n  [bold red]CRITICAL ERROR[/] [dim]Failed to install {c['name']}.[/]")
                 sys.exit(1)
-        
         progress.update(overall_task, description="[bold green]All systems ready")
 
-    # Final Success Message
     console.print("\n\n")
     console.print(Align.center(Text("✨ DEPLOYMENT SUCCESSFUL", style="bold green")))
     console.print(Align.center(Text("Environment is optimized. Please restart your terminal.", style="dim")))

@@ -1,76 +1,72 @@
 # 🚀 Laravel Dev Setup — Premium Installer
 
-Un instalador modular y profesional diseñado para configurar un entorno completo de desarrollo Laravel en **Ubuntu, Debian y WSL**. Olvídate de configurar manualmente PHP, bases de datos o servidores locales; este asistente lo hace todo por ti con una interfaz visual elegante.
+Un instalador modular, interactivo y profesional diseñado para configurar un entorno completo de desarrollo Laravel en **Ubuntu, Debian y WSL2**. Olvídate de configuraciones manuales tediosas; este asistente orquesta todo el proceso con una interfaz visual de alta fidelidad.
 
 ---
 
-## 🛠️ Componentes Incluidos
+## ⚡ Instalación Instantánea (Recomendado)
 
-El asistente te permite seleccionar e instalar los siguientes componentes:
-
-*   **💻 Shell Environment**: Zsh + Powerlevel10k + Zinit + Plugins (Autocompletado y resaltado de sintaxis).
-*   **🐘 PHP Engine**: Soporte para múltiples versiones (8.1 a 8.5) con todas las extensiones necesarias para Laravel.
-*   **🗄️ MariaDB Database**: Servidor SQL con asistente de seguridad interactivo.
-*   **🟢 Node.js (NVM)**: Gestión de versiones de Node.js mediante NVM (Instalación manual o LTS).
-*   **📦 PHP Composer**: Gestor de dependencias global para PHP.
-*   **⚡ Laravel Valet (Linux)**: Servidor de desarrollo local elite con soporte para dominios `.test` automáticos.
-*   **🎯 Laravel Installer**: Instalación global de la CLI de Laravel.
-
----
-
-## 🚀 Cómo Empezar
-
-### Instalación Rápida (Recomendado)
-Puedes ejecutar el instalador directamente desde GitHub con el siguiente comando:
+Copia y pega este comando en tu terminal para iniciar la configuración automática. No necesitas clonar el repositorio manualmente:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/LC-jhony/laravel-dev-setup/main/install.sh | bash
 ```
 
-### Ejecución Local
-Si ya has clonado el repositorio, puedes iniciar el asistente directamente:
+> **Nota:** Este comando prepara automáticamente las dependencias (Python 3, Pip, Git) y lanza el asistente visual directamente en tu terminal.
 
-```bash
-# Método 1: Usando el bootstrap de Bash
-bash install.sh
+---
 
-# Método 2: Ejecutando el asistente visual de Python directamente
-python3 main.py
-```
+## 🛠️ Componentes Incluidos
+
+Elige exactamente qué quieres instalar mediante nuestro menú interactivo:
+
+*   **💻 Shell Elite**: Zsh + Powerlevel10k + Zinit + Plugins (Autosuggestions, Syntax Highlighting).
+*   **🐘 PHP Engine**: Instalación de múltiples versiones (8.1 a 8.5) con extensiones optimizadas para Laravel.
+*   **🗄️ MariaDB Server**: Base de datos SQL con asistente de seguridad interactivo integrado.
+*   **🟢 Node.js (NVM)**: Gestión profesional de Node.js (Versiones LTS o manuales).
+*   **📦 PHP Composer**: Instalación global de la última versión estable.
+*   **⚡ Laravel Valet (Linux)**: Servidor de desarrollo local ultra-rápido con dominios `.test`.
+*   **🎯 Laravel Installer**: La CLI oficial para crear proyectos instantáneamente.
 
 ---
 
 ## ✨ Características Premium
 
-*   **Interfaz Visual (Rich)**: Menús interactivos con navegación mediante flechas de teclado.
-*   **Escalación de Privilegios Segura**: Formulario moderno para contraseña de `sudo` con sistema de refresco automático (Keep-Alive) para evitar interrupciones.
-*   **Barras de Progreso**: Visualización en tiempo real del avance general e individual de cada componente.
-*   **Detección Inteligente**: Identifica automáticamente tu distribución (Ubuntu/Debian) y configura los repositorios adecuados (Ondrej/Sury).
-*   **Modo Interactivo**: Pausa automáticamente la interfaz para configuraciones críticas como la seguridad de MariaDB o la selección manual de versiones.
+*   **Interfaz Visual (Rich)**: Menús elegantes con navegación por flechas de teclado, incluso a través de instalaciones remotas.
+*   **Force TTY Technology**: Hemos solucionado el error `Inappropriate ioctl for device`, garantizando que el teclado funcione siempre, sin importar cómo lances el script.
+*   **Smart Sudo Handler**: Sistema de interceptación PTY que permite ingresar la contraseña de `sudo` de forma visual y moderna, con un hilo "Keep-Alive" que evita que se te vuelva a pedir durante la instalación.
+*   **Detección Inteligente**: El script identifica si estás en Ubuntu o Debian y configura automáticamente los repositorios de **Ondrej Surý**.
+*   **Barras de Progreso Dinámicas**: Seguimiento en tiempo real de cada paso de la instalación.
 
 ---
 
-## 📋 Requisitos Previos
+## 📋 Requisitos
 
-*   **Sistema Operativo**: Ubuntu 22.04+, Debian 11+ o WSL2.
-*   **Privilegios**: Acceso a `sudo`.
-*   **Dependencias**: `curl` y `git` (el script `install.sh` las instalará automáticamente si faltan).
-
----
-
-## 📂 Estructura del Proyecto
-
-*   `install.sh`: Script de arranque (bootstrap) que prepara el entorno.
-*   `main.py`: El corazón del instalador (interfaz visual y lógica de orquestación).
-*   `lib/`: Scripts de ayuda para UI, detección de OS y gestión de repositorios.
-*   `installers/`: Scripts individuales para cada componente tecnológico.
+*   **OS**: Ubuntu 22.04+, Debian 11+ o WSL2.
+*   **Permisos**: Usuario con privilegios de `sudo`.
+*   **Conexión**: Acceso a internet para descargar paquetes y repositorios.
 
 ---
 
-## 🤝 Contribuciones
+## 📂 Ejecución Local
 
-Si encuentras algún error o tienes una sugerencia de mejora, siéntete libre de abrir un **Issue** o enviar un **Pull Request**.
+Si prefieres descargar el código primero:
+
+```bash
+git clone --depth 1 https://github.com/LC-jhony/laravel-dev-setup.git
+cd laravel-dev-setup
+bash install.sh
+```
 
 ---
 
-**Desarrollado con ❤️ para la comunidad de Laravel.**
+## 🤝 Contribuir
+
+¿Tienes una idea para mejorar el instalador?
+1. Haz un **Fork** del proyecto.
+2. Crea una rama para tu mejora: `git checkout -b feature/nueva-mejora`.
+3. Envía un **Pull Request**.
+
+---
+
+**Desarrollado para desarrolladores que valoran su tiempo.**

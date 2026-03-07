@@ -22,10 +22,15 @@ clear
 echo -e "${CYAN}${BOLD}🚀 LARAVEL DEV SETUP — Professional Bootstrap${RESET}"
 echo -e "${DIM}--------------------------------------------------${RESET}"
 
-# 1. Pre-flight checks & Auto-Installation
+# 1. OS Compatibility Check
+if [[ "$OSTYPE" != "linux-gnu"* ]]; then
+    echo -e "  ${RED}●${RESET} Error: This installer only supports Linux (Ubuntu/Debian/WSL)."
+    exit 1
+fi
+
+# 2. Pre-flight checks & Auto-Installation
 echo -ne "  ${CYAN}●${RESET} Preparing environment... "
 
-# Required packages for the bootstrapper to work
 REQUIRED_PKGS=("git" "curl" "python3" "python3-pip" "unzip" "sudo")
 MISSING_PKGS=()
 
@@ -46,18 +51,19 @@ else
     echo -e "${GREEN}Ready${RESET}"
 fi
 
-# 2. Preparation
+# 3. Preparation
 if [ -d "$INSTALL_PATH" ]; then
     echo -e "  ${YELLOW}●${RESET} Existing installation found. Updating... "
     rm -rf "$INSTALL_PATH"
 fi
 
-# 3. Install Rich
+# 4. Install Rich
 echo -ne "  ${CYAN}●${RESET} Installing Rich UI library... "
+# Use --break-system-packages for newer Debian/Ubuntu if needed, or simple pip install
 pip3 install rich --break-system-packages &>/dev/null || pip3 install rich &>/dev/null
 echo -e "${GREEN}Success${RESET}"
 
-# 4. Clone repository
+# 5. Clone repository
 echo -ne "  ${CYAN}●${RESET} Downloading components from GitHub... "
 if git clone --depth 1 "$REPO_URL" "$INSTALL_PATH" &>/dev/null; then
     echo -e "${GREEN}Success${RESET}"
@@ -66,8 +72,11 @@ else
     exit 1
 fi
 
-# 5. Handover to main installer
+# 6. Handover to main installer
 echo -e "  ${CYAN}●${RESET} Launching interactive wizard..."
 echo ""
 cd "$INSTALL_PATH"
-python3 main.py
+
+# THE FIX: We use </dev/tty to ensure the Python script 
+# gets the keyboard even if this script was piped from curl.
+python3 main.py </dev/tty

@@ -197,7 +197,7 @@ def run_bash_cmd(script_id, extra_args=None, progress=None):
                 if is_interactive and buffer:
                     sys.stdout.write(buffer); sys.stdout.flush()
                 break
-    except Exception: break
+    except Exception: pass
     finally:
         if is_interactive and old_settings:
             termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)

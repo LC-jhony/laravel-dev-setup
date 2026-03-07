@@ -4,11 +4,17 @@
 # ============================================================
 
 # ── Colors ───────────────────────────────────────────────────
-RESET="\033[0m";  BOLD="\033[1m";  DIM="\033[2m"
-RED="\033[91m";    GREEN="\033[92m"
-YELLOW="\033[93m"; BLUE="\033[94m"
-MAGENTA="\033[95m"; CYAN="\033[96m"
-WHITE="\033[97m";  BLACK="\033[30m"
+if [[ -n "${LARAVEL_SETUP_RICH:-}" ]]; then
+  # Disable colors for clean Rich output
+  RESET=""; BOLD=""; DIM=""
+  RED=""; GREEN=""; YELLOW=""; BLUE=""; MAGENTA=""; CYAN=""; WHITE=""; BLACK=""
+else
+  RESET="\033[0m";  BOLD="\033[1m";  DIM="\033[2m"
+  RED="\033[91m";    GREEN="\033[92m"
+  YELLOW="\033[93m"; BLUE="\033[94m"
+  MAGENTA="\033[95m"; CYAN="\033[96m"
+  WHITE="\033[97m";  BLACK="\033[30m"
+fi
 
 # ── Symbols ──────────────────────────────────────────────────
 OK="✔";  FAIL="✖";  INFO="ℹ";  WARN="⚠"
@@ -23,6 +29,8 @@ COLS=$(tput cols 2>/dev/null || echo 80)
 # ─────────────────────────────────────────────────────────────
 
 draw_line() {
+  # Skip lines in Rich mode to avoid clutter
+  [[ -n "${LARAVEL_SETUP_RICH:-}" ]] && return
   local char="${1:-─}" color="${2:-$DIM}"
   echo -e "${color}$(printf "%${COLS}s" | tr ' ' "$char")${RESET}"
 }
@@ -40,6 +48,8 @@ center_text() {
 # ─────────────────────────────────────────────────────────────
 
 show_banner() {
+  # Skip banner in Rich mode
+  [[ -n "${LARAVEL_SETUP_RICH:-}" ]] && return
   clear
   echo ""
   center_text "${CYAN}${BOLD} ██╗      █████╗ ██████╗  █████╗ ██╗   ██╗███████╗██╗     ${RESET}"
@@ -112,6 +122,8 @@ show_menu() {
 
 spin_pid=""
 spinner_start() {
+  # Disable spinner in Rich mode
+  [[ -n "${LARAVEL_SETUP_RICH:-}" ]] && return
   local label="$1"
   local frames=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
   (
@@ -126,6 +138,8 @@ spinner_start() {
 }
 
 spinner_stop() {
+  # Disable spinner in Rich mode
+  [[ -n "${LARAVEL_SETUP_RICH:-}" ]] && return
   if [[ -n "$spin_pid" ]]; then
     kill "$spin_pid" 2>/dev/null || true
     spin_pid=""
@@ -149,6 +163,7 @@ run_step() {
     exit 1
   fi
 }
+
 
 show_success() {
   echo ""

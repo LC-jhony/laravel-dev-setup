@@ -4,6 +4,8 @@ import subprocess
 import time
 import re
 import threading
+import pty
+import select
 from rich.console import Console
 from rich.live import Live
 from rich.align import Align
@@ -15,6 +17,7 @@ from rich.prompt import Prompt
 from rich.progress import Progress, BarColumn, TextColumn, SpinnerColumn, TimeElapsedColumn
 
 console = Console()
+CACHED_PASSWORD = None
 
 # ─────────────────────────────────────────────────────────────
 #   Config & State
@@ -43,6 +46,19 @@ def get_header(title_str="LARAVEL DEV SETUP", subtitle_str="PREMIUM ENVIRONMENT 
         Text("\n"),
         Rule(style="dim #333333")
     )
+
+def show_password_prompt():
+    """Muestra el prompt de contraseña estilizado y devuelve la entrada."""
+    panel = Panel(
+        Text("Administrative privileges are required for this step.\nPlease confirm your password.", justify="center"),
+        title="[bold yellow]🔒 SECURITY CHECK",
+        border_style="yellow",
+        padding=(1, 2)
+    )
+    console.print("\n")
+    console.print(Align.center(panel))
+    console.print("\n")
+    return Prompt.ask("  [bold cyan]Password[/]", password=True)
 
 # ─────────────────────────────────────────────────────────────
 #   Interactive Selector System
@@ -99,10 +115,12 @@ def interactive_select(title, options, multi=False, initial_states=None):
             live.update(render(), refresh=True)
 
 # ─────────────────────────────────────────────────────────────
-#   Execution Engine
+#   Execution Engine (PTY Enabled for Sudo Interception)
 # ─────────────────────────────────────────────────────────────
 
 def run_bash_cmd(cmd_label, script_name, extra_args=None, progress=None):
+    global CACHED_PASSWORD
+    
     cmd_parts = [
         "export SUDO=sudo",
         "source lib/ui.sh",
@@ -124,29 +142,99 @@ def run_bash_cmd(cmd_label, script_name, extra_args=None, progress=None):
     
     full_cmd = " && ".join(cmd_parts)
     
-    try:
-        if progress:
-            progress.stop()
-            console.print(f"\n  [bold cyan]▶[/] [white]Deploying:[/] [bold white]{cmd_label}[/]")
-            console.print(f"  [dim]──────────────────────────────────────────────────[/]\n")
-        
-        result = subprocess.run(["bash", "-c", full_cmd], check=False)
-        
-        if progress:
-            console.print(f"\n  [dim]──────────────────────────────────────────────────[/]")
-            progress.start()
+    if progress:
+        progress.stop()
+        console.print(f"\n  [bold cyan]▶[/] [white]Deploying:[/] [bold white]{cmd_label}[/]")
+        console.print(f"  [dim]──────────────────────────────────────────────────[/]\n")
+        progress.start()
+
+    # Usamos PTY (Pseudo-Terminal) para engañar a sudo y poder interceptar su output
+    master_fd, slave_fd = pty.openpty()
+    
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    
+    process = subprocess.Popen(
+        ["bash", "-c", full_cmd],
+        stdin=slave_fd,
+        stdout=slave_fd,
+        stderr=slave_fd,
+        close_fds=True,
+        env=env
+    )
+    os.close(slave_fd) # Cerramos el esclavo en el padre
+
+    buffer = ""
+    
+    while True:
+        try:
+            r, _, _ = select.select([master_fd], [], [], 0.1)
+            if master_fd in r:
+                data = os.read(master_fd, 1024)
+                if not data:
+                    break
+                
+                chunk = data.decode('utf-8', errors='replace')
+                buffer += chunk
+                
+                # Detectar prompt de sudo (cualquier variante común)
+                if "password for" in buffer.lower() and ":" in buffer:
+                    # Se detectó la petición de contraseña
+                    if progress: progress.stop()
+                    
+                    # Intentamos usar la cache primero, si no, pedimos
+                    pwd_to_send = CACHED_PASSWORD
+                    
+                    # Si no hay cache o queremos confirmar, mostramos UI
+                    # (Aquí asumimos que si sudo pregunta, es mejor mostrar la UI "Rich"
+                    #  para dar feedback visual de qué está pasando, como pidió el usuario)
+                    if not pwd_to_send:
+                         pwd_to_send = show_password_prompt()
+                         CACHED_PASSWORD = pwd_to_send # Actualizamos cache
+                    else:
+                        # Opcional: Si quieres que SIEMPRE salga el prompt visual, comenta el 'if' anterior
+                        # y descomenta la siguiente línea:
+                        # pwd_to_send = show_password_prompt()
+                        pass 
+
+                    # Enviamos la contraseña al terminal
+                    os.write(master_fd, (pwd_to_send + "\n").encode())
+                    buffer = "" # Limpiamos buffer
+                    
+                    if progress: progress.start()
+                
+                elif "\n" in buffer:
+                    # Imprimimos líneas completas y limpias
+                    lines = buffer.split("\n")
+                    for line in lines[:-1]:
+                        clean_line = line.strip()
+                        if clean_line and "password for" not in clean_line.lower(): 
+                             if progress:
+                                progress.console.print(f"  [dim]│[/] {clean_line}")
+                             else:
+                                console.print(f"  [dim]│[/] {clean_line}")
+                    buffer = lines[-1]
             
-        return result.returncode == 0
-    except Exception as e:
-        if progress: progress.start()
-        console.print(f"\n  [bold red]ERROR[/] {e}")
-        return False
+            if process.poll() is not None and not r:
+                break
+                
+        except (IOError, OSError):
+            break
+
+    process.wait()
+    
+    if progress:
+        console.print(f"\n  [dim]──────────────────────────────────────────────────[/]")
+        
+    return process.returncode == 0
 
 # ─────────────────────────────────────────────────────────────
 #   Main Entry Point
 # ─────────────────────────────────────────────────────────────
 
 def main():
+    global CACHED_PASSWORD
+
     # 1. Selección de Componentes
     global states
     states = interactive_select("Components", COMPONENTS, multi=True, initial_states=states)
@@ -163,7 +251,7 @@ def main():
         ]
         selected_versions['php'] = interactive_select("PHP Engine", opts)
 
-    # 3. Escalación de Privilegios Rich
+    # 3. Escalación de Privilegios Rich (Inicial)
     console.clear()
     console.print(get_header())
     
@@ -186,6 +274,7 @@ def main():
         
         if proc.returncode == 0:
             authenticated = True
+            CACHED_PASSWORD = pwd # Guardamos para uso futuro automático
             msg = Text("✓ Authentication Successful", style="bold green")
             console.print(Align.center(msg))
             time.sleep(1)
@@ -195,7 +284,6 @@ def main():
     # 4. Sudo Keep-Alive (Hilo de fondo)
     def keep_sudo_alive():
         while True:
-            # sudo -n (non-interactive) para refrescar el timestamp
             subprocess.run(["sudo", "-n", "true"], check=False)
             time.sleep(60)
             

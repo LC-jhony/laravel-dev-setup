@@ -1,95 +1,76 @@
-# 🚀 LARAVEL DEV SETUP (Pro Edition)
+# 🚀 Laravel Dev Setup — Premium Installer
 
-> **The ultimate automated installer for your Laravel development environment on Linux (Ubuntu, Debian, WSL).**
-
-[![Linux](https://img.shields.io/badge/OS-Linux-brightgreen.svg)](https://www.linux.org/)
-[![PHP](https://img.shields.io/badge/PHP-8.1--8.5-blue.svg)](https://www.php.net/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
-```text
- ██╗      █████╗ ██████╗  █████╗ ██╗   ██╗███████╗██╗
- ██║     ██╔══██╗██╔══██╗██╔══██╗██║   ██║██╔════╝██║
- ██║     ███████║██████╔╝███████║██║   ██║█████╗  ██║
- ██║     ██╔══██║██╔══██╗██╔══██║╚██╗ ██╔╝██╔══╝  ██║
- ███████╗██║  ██║██║  ██║██║  ██║ ╚████╔╝ ███████╗███████╗
- ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚══════╝
-
-          ██████╗ ███████╗██╗   ██╗    ███████╗███████╗████████╗██╗   ██╗██████╗
-          ██╔══██╗██╔════╝██║   ██║    ██╔════╝██╔════╝╚══██╔══╝██║   ██║██╔══██╗
-          ██║  ██║█████╗  ██║   ██║    ███████╗█████╗     ██║   ██║   ██║██████╔╝
-          ██║  ██║██╔══╝  ╚██╗ ██╔╝    ╚════██║██╔══╝     ██║   ██║   ██║██╔═══╝
-          ██████╔╝███████╗ ╚████╔╝     ███████║███████╗   ██║   ╚██████╔╝██║
-          ╚═════╝ ╚══════╝  ╚═══╝      ╚══════╝╚══════╝   ╚═╝    ╚═════╝ ╚═╝
-```
+Un instalador modular y profesional diseñado para configurar un entorno completo de desarrollo Laravel en **Ubuntu, Debian y WSL**. Olvídate de configurar manualmente PHP, bases de datos o servidores locales; este asistente lo hace todo por ti con una interfaz visual elegante.
 
 ---
 
-## ⚡ Quick Professional Install
+## 🛠️ Componentes Incluidos
 
-Run the following command in your terminal to start the automated installation:
+El asistente te permite seleccionar e instalar los siguientes componentes:
 
-### 🔵 Via curl (Recommended)
+*   **💻 Shell Environment**: Zsh + Powerlevel10k + Zinit + Plugins (Autocompletado y resaltado de sintaxis).
+*   **🐘 PHP Engine**: Soporte para múltiples versiones (8.1 a 8.5) con todas las extensiones necesarias para Laravel.
+*   **🗄️ MariaDB Database**: Servidor SQL con asistente de seguridad interactivo.
+*   **🟢 Node.js (NVM)**: Gestión de versiones de Node.js mediante NVM (Instalación manual o LTS).
+*   **📦 PHP Composer**: Gestor de dependencias global para PHP.
+*   **⚡ Laravel Valet (Linux)**: Servidor de desarrollo local elite con soporte para dominios `.test` automáticos.
+*   **🎯 Laravel Installer**: Instalación global de la CLI de Laravel.
+
+---
+
+## 🚀 Cómo Empezar
+
+### Instalación Rápida (Recomendado)
+Puedes ejecutar el instalador directamente desde GitHub con el siguiente comando:
+
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/LC-jhony/laravel-dev-setup/main/installer.sh)
+curl -sSL https://raw.githubusercontent.com/LC-jhony/laravel-dev-setup/main/install.sh | bash
 ```
 
-### 🟠 Via wget
+### Ejecución Local
+Si ya has clonado el repositorio, puedes iniciar el asistente directamente:
+
 ```bash
-bash <(wget -qO- https://raw.githubusercontent.com/LC-jhony/laravel-dev-setup/main/installer.sh)
+# Método 1: Usando el bootstrap de Bash
+bash install.sh
+
+# Método 2: Ejecutando el asistente visual de Python directamente
+python3 main.py
 ```
 
 ---
 
-## 🌟 Professional Features
+## ✨ Características Premium
 
-| Feature | Description |
-| :--- | :--- |
-| **🚀 One-Line Setup** | Automated cloning and wizard execution (like `rustup` or `nvm`). |
-| **🧠 System Detection** | Automatically detects OS (Ubuntu/Debian), architecture, and existing PHP versions. |
-| **🧩 Modular Design** | Each component is a separate module (`shell`, `php`, `mariadb`, `node`, `composer`, `valet`). |
-| **🐘 PHP Wizard** | Choose version (8.1-8.5), package profile (Default/Minimal), and web server integration. |
-| **🐚 Modern Shell** | Zsh + Powerlevel10k + Zinit + Plugins for a elite terminal experience. |
-| **🎯 Laravel Stack** | Global Composer, Laravel Installer, and MariaDB (secured). |
+*   **Interfaz Visual (Rich)**: Menús interactivos con navegación mediante flechas de teclado.
+*   **Escalación de Privilegios Segura**: Formulario moderno para contraseña de `sudo` con sistema de refresco automático (Keep-Alive) para evitar interrupciones.
+*   **Barras de Progreso**: Visualización en tiempo real del avance general e individual de cada componente.
+*   **Detección Inteligente**: Identifica automáticamente tu distribución (Ubuntu/Debian) y configura los repositorios adecuados (Ondrej/Sury).
+*   **Modo Interactivo**: Pausa automáticamente la interfaz para configuraciones críticas como la seguridad de MariaDB o la selección manual de versiones.
 
 ---
 
-## 🛠️ Components Included
+## 📋 Requisitos Previos
 
-- **Shell Environment**: `git`, `unzip`, `zsh`, `fzf`, `zoxide`, `Powerlevel10k`.
-- **PHP Stack**: PHP 8.1 - 8.5 via `ondrej/php` (Ubuntu) or `sury.org` (Debian).
-- **Database**: MariaDB Server + Client + Secure Installation.
-- **Node.js**: NVM (Node Version Manager) + Node.js LTS.
-- **Tools**: Composer Global + Laravel Installer + Valet Linux.
+*   **Sistema Operativo**: Ubuntu 22.04+, Debian 11+ o WSL2.
+*   **Privilegios**: Acceso a `sudo`.
+*   **Dependencias**: `curl` y `git` (el script `install.sh` las instalará automáticamente si faltan).
 
 ---
 
-## 🖥️ Modular Structure
+## 📂 Estructura del Proyecto
 
-```text
-laravel-dev-setup/
-├── installer.sh            ← Professional bootstrap (curl/wget)
-├── install.sh              ← Main interactive wizard
-├── lib/
-│   ├── ui.sh               ← Colors, banner, spinner, UI helpers
-│   ├── detect.sh           ← OS, Arch, and PHP auto-detection
-│   └── repo.sh             ← Automated PPA and Repository setup
-└── installers/
-    ├── php.sh              ← PHP core + extensions logic
-    ├── node.sh             ← NVM + Node.js management
-    ├── shell.sh            ← Zsh environment setup
-    └── ...                 (mariadb, composer, valet)
-```
+*   `install.sh`: Script de arranque (bootstrap) que prepara el entorno.
+*   `main.py`: El corazón del instalador (interfaz visual y lógica de orquestación).
+*   `lib/`: Scripts de ayuda para UI, detección de OS y gestión de repositorios.
+*   `installers/`: Scripts individuales para cada componente tecnológico.
 
 ---
 
-## 🆚 Supported Systems
+## 🤝 Contribuciones
 
-- **Ubuntu**: 20.04, 22.04, 24.04 (and derivatives like Mint, Pop!_OS)
-- **Debian**: 11, 12 (and derivatives like Kali, Raspbian)
-- **WSL/WSL2**: Fully compatible with Linux distributions on Windows.
+Si encuentras algún error o tienes una sugerencia de mejora, siéntete libre de abrir un **Issue** o enviar un **Pull Request**.
 
 ---
 
-## 📝 License
-
-This project is licensed under the MIT License. Developed with ❤️ by [LC-jhony](https://github.com/LC-jhony).
+**Desarrollado con ❤️ para la comunidad de Laravel.**

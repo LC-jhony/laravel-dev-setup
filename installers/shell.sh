@@ -10,8 +10,8 @@ install_shell() {
   echo ""
 
   # 1. Packages
-  run_step "Installing git, unzip, zsh, fzf, zoxide" \
-    $SUDO apt-get install -y git unzip zsh fzf zoxide
+  run_step "Installing git, unzip, zsh" \
+    $SUDO apt-get install -y git unzip zsh 
 
   # 2. Write ~/.zshrc (Simple & Clean)
   if [[ -f "$ZSHRC_FILE" ]]; then
@@ -59,16 +59,15 @@ source "${ZINIT_HOME}/zinit.zsh"
 zinit ice depth=1; zinit light romkatv/powerlevel10k
 zinit light zsh-users/zsh-syntax-highlighting
 zinit light zsh-users/zsh-autosuggestions
-zinit light Aloxaf/fzf-tab
 
 # OMZ Snippets
+zinit snippet OMZL::git.zsh
 zinit snippet OMZP::git
 zinit snippet OMZP::sudo
 zinit snippet OMZP::laravel
 
 # Init Tools
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-command -v zoxide &>/dev/null && eval "$(zoxide init zsh)"
 
 # Path
 export PATH="${HOME}/.config/composer/vendor/bin:${PATH}"

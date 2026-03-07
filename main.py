@@ -150,7 +150,13 @@ def main():
     # 2. Configuración de PHP (Interactiva con flechas)
     selected_versions = {}
     if states['php']:
-        opts = [{"id": v, "name": f"PHP {v}"} for v in ["8.5", "8.4", "8.3", "8.2", "8.1"]]
+        opts = [
+            {"id": "8.4", "name": "PHP 8.4 (Stable)"},
+            {"id": "8.3", "name": "PHP 8.3"},
+            {"id": "8.2", "name": "PHP 8.2"},
+            {"id": "8.1", "name": "PHP 8.1"},
+            {"id": "8.5", "name": "PHP 8.5 (Experimental)"}
+        ]
         selected_versions['php'] = interactive_select("PHP Engine", opts)
 
     # 3. Confirmación y Sudo Inicial

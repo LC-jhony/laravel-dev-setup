@@ -1,90 +1,86 @@
-# 🚀 Laravel Dev Setup — Premium Installer
+# 🚀 Laravel Dev Setup — Premium Linux Orchestrator
 
-Un ecosistema modular, interactivo y profesional diseñado para transformar una instalación limpia de **Ubuntu 24.04+ o WSL2** en una estación de trabajo Laravel de élite en minutos. Olvídate de configuraciones manuales; este asistente orquesta cada detalle con una interfaz visual de alta fidelidad.
+[![Ubuntu 24.04](https://img.shields.io/badge/Ubuntu-24.04-orange?logo=ubuntu&logoColor=white)](https://ubuntu.com/)
+[![WSL2 Ready](https://img.shields.io/badge/WSL2-Compatible-blue?logo=windows&logoColor=white)](https://learn.microsoft.com/en-us/windows/wsl/about)
+[![PHP](https://img.shields.io/badge/PHP-8.1_--_8.4-777BB4?logo=php&logoColor=white)](https://www.php.net/)
+[![Laravel](https://img.shields.io/badge/Laravel-11--12-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
+
+Un ecosistema modular, interactivo y de alto rendimiento diseñado para transformar una instalación limpia de **Ubuntu 24.04 (Noble Numbat) o WSL2** en una estación de trabajo Laravel de élite en minutos. Olvídate de configuraciones manuales; este asistente orquesta cada detalle con una interfaz visual de alta fidelidad basada en Python Rich.
 
 ---
 
-## ⚡ Instalación Relámpago
+## ⚡ Instalación Instantánea
 
-No necesitas descargar nada manualmente. Copia y pega este comando en tu terminal:
+No necesitas clonar nada. Ejecuta este comando en tu terminal para iniciar el despliegue:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/LC-jhony/laravel-dev-setup/main/install.sh | bash
 ```
 
-> **¿Qué hace este comando?** Prepara tu sistema (instala Python 3, Git y la librería Rich) y lanza automáticamente el asistente visual interactivo.
+> **Nota de Seguridad**: El script de inicio (`install.sh`) detectará tu OS, preparará las dependencias críticas (Git, Python 3, Pip, Rich) y lanzará el orquestador principal sin interrumpir tu flujo de trabajo.
 
 ---
 
-## 🛠️ Stack Tecnológico Incluido
+## 🛠️ Stack de Tecnologías Premium
 
-Elige qué componentes instalar mediante el menú interactivo:
+Personaliza tu entorno seleccionando los componentes exactos que necesitas:
 
-*   **💻 Shell Elite**: Configuración de **Zsh** potenciada con **Powerlevel10k**, **Zinit** y plugins esenciales (Autosugerencias y Resaltado de Sintaxis).
-*   **🐘 PHP Engine**: Soporte para múltiples versiones (**8.1 a 8.4**) con el set completo de extensiones optimizadas para Laravel.
-*   **🗄️ MariaDB Database**: Servidor SQL de alto rendimiento con asistente de seguridad interactivo integrado.
-*   **⬢ Node.js (NVM)**: Instalación profesional de Node.js mediante NVM, permitiendo elegir versiones LTS o específicas.
-*   **📦 PHP Composer**: El gestor de dependencias estándar de la industria, instalado globalmente.
-*   **⚡ Laravel Valet (Linux)**: Entorno de servidor minimalista y ultra-rápido con soporte automático para dominios `.test`.
-*   **🎯 Laravel Installer**: Herramienta de línea de comandos para crear nuevos proyectos instantáneamente.
+*   **💻 Shell Elite (Zsh + P10k)**: Configuración de **Zsh** optimizada con **Zinit**, **Powerlevel10k**, resaltado de sintaxis y autosugerencias inteligentes.
+*   **🐘 PHP Engine Multi-Versión**: Elige entre **PHP 8.1, 8.2, 8.3 o 8.4** con todas las extensiones oficiales de Laravel (bcmath, xml, curl, sqlite3, etc.).
+*   **🗄️ MariaDB Engine**: Servidor SQL de alto rendimiento con un asistente de seguridad interactivo inyectado directamente en la UI.
+*   **⬢ Node.js (NVM)**: Instalación de Node.js gestionada por NVM, permitiendo seleccionar versiones LTS o versiones específicas sobre la marcha.
+*   **📦 PHP Composer**: Instalación global del gestor de dependencias estándar de la industria.
+*   **⚡ Laravel Valet (Linux)**: Entorno de servidor ultra-rápido con soporte automático para dominios `.test` y proxy inverso ligero.
+*   **🎯 Laravel Installer**: Herramienta CLI para crear nuevos proyectos de forma instantánea.
 
 ---
 
-## ⌨️ Atajos de Teclado y Navegación
+## ⌨️ Control y Navegación Maestros
 
-La interfaz ha sido diseñada para ser fluida e intuitiva:
+Nuestra interfaz visual no es solo estética; es funcional y reactiva:
 
 | Tecla | Acción |
 | :--- | :--- |
 | **↑ / ↓** | Navegar entre los componentes del menú. |
 | **Espacio** | Marcar o desmarcar un componente para instalar. |
-| **T** | **Alternar Temas**: Cambia instantáneamente entre Modo Oscuro y Claro. |
-| **Enter** | Confirmar selección e iniciar el despliegue. |
+| **T** | **Toggle Theme**: Alterna entre Modo Oscuro y Modo Claro instantáneamente. |
+| **Enter** | Confirmar selección e iniciar el despliegue orquestado. |
 | **Q** | Salir del instalador de forma segura. |
-| **Ctrl + C** | Cancelar instalación en curso (Cierre limpio de procesos). |
+| **Ctrl + C** | Cancelación limpia con cierre de subprocesos activos. |
 
 ---
 
-## ✨ Características Premium
+## ✨ Características de Ingeniería de Élite
 
-### 🌓 Temas Dinámicos (Dark/Light)
-Diseñado para ser legible en cualquier entorno. Si tu terminal tiene fondo claro, presiona **`T`** para activar el modo de alta visibilidad.
+### 🌓 Motor de Temas Adaptativo
+Diseñado para la legibilidad absoluta. Si prefieres fondos claros o trabajas en entornos de alta iluminación, presiona **`T`** para cambiar a un tema de alta visibilidad sin reiniciar el script.
 
-### 🔒 Modal de Seguridad Inteligente
-No más prompts feos de `sudo` rompiendo la estética. Cuando el sistema requiera permisos, aparecerá un **Modal Centrado con bordes dobles** pidiendo tu contraseña de forma elegante. Incluye un sistema de **Keep-Alive** que mantiene la sesión activa para que solo tengas que ingresarla una vez.
+### 🔒 Inyección PTY y Seguridad Inteligente
+Gracias a la tecnología de **Pseudo-Terminal (PTY)**, el orquestador puede detectar prompts de `sudo` e inyectar un modal de seguridad elegante con bordes dobles (`box.DOUBLE`). Una vez autenticado, un sistema de **Keep-Alive** mantiene la sesión sudo activa de forma segura.
 
-### 🔍 Escaneo de Pre-vuelo
-Antes de mostrarte el menú, el script escanea tu sistema. Si detecta que ya tienes un componente instalado (ej. PHP 8.2), te mostrará la versión actual en color verde y lo desmarcará automáticamente para ahorrarte tiempo.
+### 🔍 Detección Pre-vuelo (Smart Scan)
+El script escanea tu sistema antes de mostrar el menú. Si detecta que ya tienes instalado un componente (ej. Node.js v20), lo marcará con un badge verde `[v20.x]` y lo deseleccionará automáticamente para optimizar el tiempo de instalación.
 
-### 🚀 Force TTY Technology
-Gracias a nuestra gestión avanzada de descriptores de archivos, garantizamos que las flechas del teclado y la interactividad funcionen perfectamente, incluso si ejecutas el instalador directamente desde una URL (`curl | bash`).
-
----
-
-## 📂 Estructura del Ecosistema
-
-*   **`install.sh`**: El "Bootstrapper". Prepara el terreno y garantiza que Python tenga todo lo necesario.
-*   **`main.py`**: El "Cerebro". Gestiona la UI Rich, la lógica de selección y la orquestación de subprocesos.
-*   **`lib/`**: Librerías de soporte para detección de OS, gestión de repositorios y estilos visuales.
-*   **`installers/`**: Scripts modulares de Bash que contienen la lógica de instalación "hardcore" de cada tecnología.
+### 🚀 Zero-Blocking Architecture
+Todas las instalaciones de paquetes (`apt`) se ejecutan en modo no interactivo (`DEBIAN_FRONTEND=noninteractive`) mientras que los asistentes que requieren tu atención (como MariaDB o selección de Node) toman el control total de la terminal de forma transparente.
 
 ---
 
-## 📋 Requisitos Mínimos
+## 📂 Arquitectura del Proyecto
 
-*   **Sistema**: **EXCLUSIVAMENTE Ubuntu 24.04+** o WSL2 (basado en Ubuntu 24.04).
-*   **Usuario**: Debe tener privilegios de `sudo`.
-*   **Internet**: Conexión activa para la descarga de paquetes oficiales.
-
----
-
-## 🤝 Contribuciones y Soporte
-
-¿Encontraste un bug o tienes una idea "Nivel 100"?
-1. Haz un **Fork** del repositorio.
-2. Crea una rama: `git checkout -b mejora/increible`.
-3. Envía un **Pull Request**.
+*   **`install.sh`**: El "Bootstrapper". Valida el OS, instala el entorno Python y prepara el terreno.
+*   **`main.py`**: El "Cerebro". Gestiona la UI Rich, la lógica de selección y la orquestación de subprocesos mediante PTY.
+*   **`lib/`**: Librerías de soporte compartidas entre Python y Bash para detección de OS y gestión de repositorios.
+*   **`installers/`**: Scripts modulares de Bash que encapsulan la lógica de instalación de cada tecnología de forma aislada.
 
 ---
 
-**Desarrollado con ❤️ por y para desarrolladores de Laravel.**
+## 📋 Requisitos del Sistema
+
+*   **Sistema Operativo**: Ubuntu 24.04 (Noble Numbat) o superior / WSL2 (Ubuntu 24.04).
+*   **Usuario**: Privilegios de `sudo`.
+*   **Conectividad**: Acceso a internet para descarga de repositorios oficiales.
+
+---
+
+**Desarrollado con ❤️ para el ecosistema Laravel.**

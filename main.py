@@ -41,18 +41,11 @@ def graceful_exit(sig, frame):
 signal.signal(signal.SIGINT, graceful_exit)
 
 THEMES = {
-    "dark": {
-        "primary": "cyan", "secondary": "blue", "text": "white", "highlight": "bold white",
-        "dim": "dim", "success": "green", "error": "red", "border": "dim #333333", "modal_border": "bright_yellow"
-    },
-    "light": {
-        "primary": "blue", "secondary": "magenta", "text": "grey15", "highlight": "bold black",
-        "dim": "grey37", "success": "dark_green", "error": "dark_red", "border": "grey70", "modal_border": "blue"
-    }
+    "primary": "cyan", "secondary": "blue", "text": "white", "highlight": "bold white",
+    "dim": "dim", "success": "green", "error": "red", "border": "dim #333333", "modal_border": "bright_yellow"
 }
 
-current_theme_key = "dark"
-def get_theme(): return THEMES[current_theme_key]
+def get_theme(): return THEMES
 
 COMPONENTS = [
     {"id": "shell",    "name": "Shell Environment", "icon": ">_", "desc": "Zsh + P10k + Modern CLI Tools", "bin": "zsh"},
@@ -212,8 +205,7 @@ def run_bash_cmd(script_id, extra_args=None, progress=None):
 
 def get_header(title="LARAVEL DEV SETUP", sub="PREMIUM BOOTSTRAPPER"):
     theme = get_theme()
-    mode = "🌓 DARK" if current_theme_key == "dark" else "☀️ LIGHT"
-    return Group(Text("\n"), Align.right(Text(f"{mode}  ", style=f"{theme['dim']} italic")), Align.center(Text(title, style=f"bold {theme['primary']} tracking5")), Align.center(Text(sub, style=f"{theme['dim']} italic")), Text("\n"), Rule(style=theme['border']))
+    return Group(Text("\n"), Align.center(Text(title, style=f"bold {theme['primary']} tracking5")), Align.center(Text(sub, style=f"{theme['dim']} italic")), Text("\n"), Rule(style=theme['border']))
 
 def getch():
     import tty, termios
@@ -223,7 +215,6 @@ def getch():
     return ch
 
 def main():
-    global current_theme_key
     console.clear(); console.print(get_header())
     with console.status(" [bold]Escaneando sistema...[/]"): installed_info = detect_installed(); time.sleep(0.5)
 
@@ -242,7 +233,7 @@ def main():
     idx = 0; states = {c['id']: (not installed_info[c['id']]) for c in COMPONENTS}
     while True:
         theme = get_theme()
-        console.clear(); console.print(get_header("MENU DE SELECCIÓN", "↑↓ Nav · Espacio Marcar · T Tema · Enter Confirmar"))
+        console.clear(); console.print(get_header("MENU DE SELECCIÓN", "↑↓ Nav · Espacio Marcar · Enter Confirmar"))
         for i, c in enumerate(COMPONENTS):
             active = (i == idx); mark = f" [bold {theme['primary']}]●[/] " if states[c['id']] else f" [{theme['dim']}]○[/] "
             style = theme['highlight'] if active else (theme['text'] if states[c['id']] else theme['dim'])
@@ -257,7 +248,6 @@ def main():
             if r == '[A': idx = (idx - 1) % len(COMPONENTS)
             elif r == '[B': idx = (idx + 1) % len(COMPONENTS)
         elif key == ' ': states[COMPONENTS[idx]['id']] = not states[COMPONENTS[idx]['id']]
-        elif key.lower() == 't': current_theme_key = "light" if current_theme_key == "dark" else "dark"
         elif key in ('\r', '\n'): break
         elif key.lower() == 'q': sys.exit(0)
 

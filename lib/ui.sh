@@ -17,8 +17,8 @@ else
 fi
 
 # ── Symbols ──────────────────────────────────────────────────
-OK="✔";  FAIL="✖";  INFO="ℹ";  WARN="⚠"
-ARROW="➜";  DOT="•";  STEP="◆"
+OK="◆";  FAIL="✖";  INFO="ℹ";  WARN="◆"
+ARROW="◆";  DOT="◆";  STEP="◆"
 
 # ── Terminal width ────────────────────────────────────────────
 COLS=$(tput cols 2>/dev/null || echo 80)

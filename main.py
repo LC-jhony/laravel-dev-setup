@@ -80,20 +80,70 @@ def detect_installed():
 
 def modern_modal_password():
     theme = get_theme()
-    console.clear()
-    panel = Panel(Align.center(Group(Text("\nAcceso Administrativo Requerido", style=f"bold {theme['text']}"), Text("\nSe requieren permisos de sudo para continuar.", style=theme['dim']))), title=f"[bold yellow] 🔐 SECURITY CHECK ", border_style=theme['modal_border'], padding=(2, 4), box=box.DOUBLE)
-    console.print("\n" * (max(0, console.height // 4)), Align.center(panel))
-    pwd = Prompt.ask(f" [bold {theme['primary']}]Contraseña de sistema[/]", password=True)
-    proc = subprocess.Popen(["sudo", "-S", "-v"], stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-    proc.communicate(input=f"{pwd}\n".encode())
-    if proc.returncode == 0:
-        global KEEPALIVE_STARTED
-        if not KEEPALIVE_STARTED:
-            KEEPALIVE_STARTED = True
-            def keep_alive():
-                while True: subprocess.run(["sudo", "-n", "true"], check=False, stderr=subprocess.DEVNULL); time.sleep(60)
-            threading.Thread(target=keep_alive, daemon=True).start()
-        return pwd
+    max_attempts = 3
+    error_message = ""
+    
+    for attempt in range(max_attempts):
+        console.clear()
+        
+        # Crear layout del modal
+        header = Text("🔐 ACCESO ADMINISTRATIVO", style=f"bold {theme['primary']}", justify="center")
+        subtitle = Text("Se requieren permisos de sudo para continuar", style=f"{theme['dim']}", justify="center")
+        
+        # Mensaje de error si existe
+        error_text = Text(f"\n⚠ {error_message}", style=f"bold {theme['error']}") if error_message else Text("")
+        
+        # Contenido del panel
+        content = Group(
+            Text("\n"),
+            Align.center(header),
+            Align.center(subtitle),
+            Text("\n"),
+            Align.center(error_text)
+        )
+        
+        panel = Panel(
+            content,
+            title=f"[bold {theme['modal_border']}] 🔒 SEGURIDAD ",
+            border_style=theme['modal_border'],
+            padding=(2, 4),
+            box=box.DOUBLE
+        )
+        
+        # Centrar verticalmente
+        console.print("\n" * (max(0, console.height // 4)), Align.center(panel))
+        
+        # Pedir contraseña
+        pwd = Prompt.ask(f"\n [bold {theme['primary']}]Contraseña de sistema[/]", password=True)
+        
+        # Validar con sudo
+        proc = subprocess.Popen(["sudo", "-S", "-v"], stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        proc.communicate(input=f"{pwd}\n".encode())
+        
+        if proc.returncode == 0:
+            # Iniciar keep-alive si es la primera vez
+            global KEEPALIVE_STARTED
+            if not KEEPALIVE_STARTED:
+                KEEPALIVE_STARTED = True
+                def keep_alive():
+                    while True: 
+                        subprocess.run(["sudo", "-n", "true"], check=False, stderr=subprocess.DEVNULL)
+                        time.sleep(60)
+                threading.Thread(target=keep_alive, daemon=True).start()
+            
+            # Guardar en caché y retornar
+            global CACHED_PASSWORD
+            CACHED_PASSWORD = pwd
+            return pwd
+        else:
+            # Preparar mensaje de error para el siguiente intento
+            intentos_restantes = max_attempts - attempt - 1
+            if intentos_restantes > 0:
+                error_message = f"Contraseña incorrecta. Intentos restantes: {intentos_restantes}"
+            else:
+                error_message = "Intentos agotados. Reintentando..."
+    
+    # Si se agotan todos los intentos, reiniciar el proceso
     return modern_modal_password()
 
 # ─────────────────────────────────────────────────────────────

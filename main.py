@@ -86,14 +86,14 @@ def modern_modal_password():
     for attempt in range(max_attempts):
         console.clear()
         
-        # Crear layout del modal
+        # Crear layout minimalista
         header = Text("🔐 ACCESO ADMINISTRATIVO", style=f"bold {theme['primary']}", justify="center")
         subtitle = Text("Se requieren permisos de sudo para continuar", style=f"{theme['dim']}", justify="center")
         
         # Mensaje de error si existe
         error_text = Text(f"\n⚠ {error_message}", style=f"bold {theme['error']}") if error_message else Text("")
         
-        # Contenido del panel
+        # Contenido sin panel, solo texto centrado
         content = Group(
             Text("\n"),
             Align.center(header),
@@ -102,16 +102,8 @@ def modern_modal_password():
             Align.center(error_text)
         )
         
-        panel = Panel(
-            content,
-            title=f"[bold {theme['modal_border']}] 🔒 SEGURIDAD ",
-            border_style=theme['modal_border'],
-            padding=(2, 4),
-            box=box.DOUBLE
-        )
-        
-        # Centrar verticalmente
-        console.print("\n" * (max(0, console.height // 4)), Align.center(panel))
+        # Mostrar contenido centrado
+        console.print("\n" * (max(0, console.height // 4)), Align.center(content))
         
         # Pedir contraseña
         pwd = Prompt.ask(f"\n [bold {theme['primary']}]Contraseña de sistema[/]", password=True)

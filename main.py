@@ -86,27 +86,13 @@ def modern_modal_password():
     for attempt in range(max_attempts):
         console.clear()
         
-        # Crear layout minimalista
-        header = Text("🔐 ACCESO ADMINISTRATIVO", style=f"bold {theme['primary']}", justify="center")
-        subtitle = Text("Se requieren permisos de sudo para continuar", style=f"{theme['dim']}", justify="center")
-        
-        # Mensaje de error si existe
-        error_text = Text(f"\n⚠ {error_message}", style=f"bold {theme['error']}") if error_message else Text("")
-        
-        # Contenido sin panel, solo texto centrado
-        content = Group(
-            Text("\n"),
-            Align.center(header),
-            Align.center(subtitle),
-            Text("\n"),
-            Align.center(error_text)
-        )
-        
-        # Mostrar contenido centrado
-        console.print("\n" * (max(0, console.height // 4)), Align.center(content))
+        # Solo mostrar mensaje de error si existe
+        if error_message:
+            error_text = Text(f"⚠ {error_message}\n", style=f"bold {theme['error']}", justify="center")
+            console.print("\n" * (max(0, console.height // 4) - 1), Align.center(error_text))
         
         # Pedir contraseña
-        pwd = Prompt.ask(f"\n [bold {theme['primary']}] 🔐 Contraseña de sistema[/]", password=True)
+        pwd = Prompt.ask(f"[bold {theme['primary']}]Contraseña de sistema[/]", password=True)
         
         # Validar con sudo
         proc = subprocess.Popen(["sudo", "-S", "-v"], stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)

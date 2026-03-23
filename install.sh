@@ -41,7 +41,7 @@ fi
 # 2. Pre-flight checks & Auto-Installation
 echo -ne "  ${CYAN}●${RESET} Preparing environment... "
 
-REQUIRED_PKGS=("git" "curl" "python3" "python3-pip" "unzip" "sudo")
+REQUIRED_PKGS=("curl" "python3" "python3-pip" "sudo")
 MISSING_PKGS=()
 
 for pkg in "${REQUIRED_PKGS[@]}"; do

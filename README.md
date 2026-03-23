@@ -17,7 +17,7 @@ No necesitas clonar nada. Ejecuta este comando en tu terminal para iniciar el de
 curl -sSL https://raw.githubusercontent.com/LC-jhony/laravel-dev-setup/main/install.sh | bash
 ```
 
-> **Nota de Seguridad**: El script de inicio (`install.sh`) detectará tu OS, preparará las dependencias críticas (Git, Python 3, Pip, Rich) y lanzará el orquestador principal sin interrumpir tu flujo de trabajo.
+> **Nota de Seguridad**: El script de inicio (`install.sh`) detectará tu OS, preparará las dependencias críticas (Python 3, Pip, Rich) y lanzará el orquestador principal sin interrumpir tu flujo de trabajo.
 
 ---
 
@@ -25,7 +25,6 @@ curl -sSL https://raw.githubusercontent.com/LC-jhony/laravel-dev-setup/main/inst
 
 Personaliza tu entorno seleccionando los componentes exactos que necesitas:
 
-*   **💻 Shell Elite (Zsh + P10k)**: Configuración de **Zsh** optimizada con **Zinit**, **Powerlevel10k**, resaltado de sintaxis y autosugerencias inteligentes.
 *   **🐘 PHP Engine Multi-Versión**: Elige entre **PHP 8.1, 8.2, 8.3 o 8.4** con todas las extensiones oficiales de Laravel (bcmath, xml, curl, sqlite3, etc.).
 *   **🗄️ MariaDB Engine**: Servidor SQL de alto rendimiento con un asistente de seguridad interactivo inyectado directamente en la UI.
 *   **⬢ Node.js (NVM)**: Instalación de Node.js gestionada por NVM, permitiendo seleccionar versiones LTS o versiones específicas sobre la marcha.

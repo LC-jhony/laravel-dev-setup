@@ -56,7 +56,6 @@ THEMES = {
 def get_theme(): return THEMES
 
 COMPONENTS = [
-    {"id": "shell",    "name": "Shell Environment", "icon": ">_", "desc": "Zsh + P10k + Modern CLI Tools", "bin": "zsh"},
     {"id": "php",      "name": "PHP Engine",        "icon": "🐘", "desc": "Engine + Laravel Extensions", "bin": "php"},
     {"id": "mariadb",  "name": "MariaDB Database",  "icon": "🗄️", "desc": "SQL Server + Security", "bin": "mariadb"},
     {"id": "node",     "name": "Node.js (NVM)",     "icon": "⬢", "desc": "JS Runtime & Package Manager", "bin": "node"},
